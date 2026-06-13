@@ -21,7 +21,15 @@ const AddBookPage: React.FC = () => {
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const recommendBooks = useMemo(() => generateRecommendBooks(), [generateRecommendBooks]);
+  const recommendBooks = useMemo(() => {
+    const items = generateRecommendBooks();
+    if (items.length === 0) return [] as Book[];
+    const first = items[0] as any;
+    if ('book' in first) {
+      return (items as Array<{ book: Book; reason: string }>).map((x) => x.book);
+    }
+    return items as Book[];
+  }, [generateRecommendBooks]);
 
   const [formData, setFormData] = useState({
     title: '',

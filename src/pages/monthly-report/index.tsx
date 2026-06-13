@@ -8,66 +8,16 @@ import useAppStore from '@/store';
 const MonthlyReportPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'monthly' | 'annual'>('monthly');
   const getMonthlyReport = useAppStore((state) => state.getMonthlyReport);
+  const getAnnualReport = useAppStore((state) => state.getAnnualReport);
   const exportMonthlyReportPDF = useAppStore((state) => state.exportMonthlyReportPDF);
+  const exportAnnualReportPDF = useAppStore((state) => state.exportAnnualReportPDF);
   const readingRecords = useAppStore((state) => state.readingRecords);
   const notes = useAppStore((state) => state.notes);
   const books = useAppStore((state) => state.books);
 
   const report = useMemo(() => getMonthlyReport(), [getMonthlyReport]);
 
-  const annualReport = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const yearStart = new Date(year, 0, 1).getTime();
-    const yearEnd = new Date(year + 1, 0, 1).getTime();
-
-    const yearRecords = readingRecords.filter((r) => {
-      const t = new Date(r.date).getTime();
-      return t >= yearStart && t < yearEnd;
-    });
-
-    const totalReadingTime = yearRecords.reduce((sum, r) => sum + r.minutes, 0);
-    const finishedBooks = books.filter(
-      (b) => b.status === 'finished' && b.lastReadTime && b.lastReadTime >= yearStart && b.lastReadTime < yearEnd
-    ).length;
-    const totalNotes = notes.filter((n) => n.createTime >= yearStart && n.createTime < yearEnd).length;
-    const totalActiveDays = yearRecords.filter((r) => r.minutes > 0).length;
-
-    const monthlyData = Array.from({ length: 12 }, (_, i) => {
-      const monthStart = new Date(year, i, 1).getTime();
-      const monthEnd = new Date(year, i + 1, 1).getTime();
-      const monthRecords = yearRecords.filter((r) => {
-        const t = new Date(r.date).getTime();
-        return t >= monthStart && t < monthEnd;
-      });
-      const monthMinutes = monthRecords.reduce((sum, r) => sum + r.minutes, 0);
-      const monthFinished = books.filter(
-        (b) => b.status === 'finished' && b.lastReadTime && b.lastReadTime >= monthStart && b.lastReadTime < monthEnd
-      ).length;
-      const monthNotes = notes.filter((n) => n.createTime >= monthStart && n.createTime < monthEnd).length;
-      return { month: i + 1, minutes: monthMinutes, finished: monthFinished, notes: monthNotes };
-    });
-
-    const categoryMap: Record<string, number> = {};
-    books.forEach((b) => {
-      if (b.category) categoryMap[b.category] = (categoryMap[b.category] || 0) + 1;
-    });
-    const topCategories = Object.entries(categoryMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([category, count]) => ({ category, count }));
-
-    return {
-      year,
-      totalReadingTime,
-      totalBooks: books.length,
-      finishedBooks,
-      totalNotes,
-      totalActiveDays,
-      monthlyData,
-      topCategories,
-    };
-  }, [readingRecords, books, notes]);
+  const annualReport = useMemo(() => getAnnualReport(), [getAnnualReport]);
 
   const categories = useMemo(() => {
     const maxCount = Math.max(...report.categories.map((c) => c.count), 1);
@@ -93,9 +43,7 @@ const MonthlyReportPage: React.FC = () => {
     Taro.showLoading({ title: '生成中...' });
     try {
       if (activeTab === 'annual') {
-        const now = new Date();
-        const monthParam = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        await exportMonthlyReportPDF(monthParam);
+        await exportAnnualReportPDF();
       } else {
         await exportMonthlyReportPDF();
       }
@@ -120,7 +68,7 @@ const MonthlyReportPage: React.FC = () => {
   const monthStr = report.month;
   const [year, month] = monthStr.split('-');
 
-  const annualMaxMinutes = Math.max(...annualReport.monthlyData.map((m) => m.minutes), 1);
+  const annualMaxMinutes = Math.max(...annualReport.monthlyData.map((m) => m.readingTime), 1);
   const annualTopMax = Math.max(...annualReport.topCategories.map((c) => c.count), 1);
 
   return (
@@ -275,7 +223,8 @@ const MonthlyReportPage: React.FC = () => {
               <View className={styles.chartSection}>
                 <View className={styles.chartBars}>
                   {annualReport.monthlyData.map((m) => {
-                    const height = annualMaxMinutes > 0 ? (m.minutes / annualMaxMinutes) * 100 : 0;
+                    const height = annualMaxMinutes > 0 ? (m.readingTime / annualMaxMinutes) * 100 : 0;
+                    const mNum = parseInt(m.month.split('-')[1], 10);
                     return (
                       <View key={m.month} className={styles.chartBar}>
                         <View
@@ -289,7 +238,7 @@ const MonthlyReportPage: React.FC = () => {
                 <View className={styles.chartLabels}>
                   {annualReport.monthlyData.map((m) => (
                     <Text key={m.month} className={styles.chartLabel}>
-                      {m.month}月
+                      {parseInt(m.month.split('-')[1], 10)}月
                     </Text>
                   ))}
                 </View>
@@ -304,14 +253,17 @@ const MonthlyReportPage: React.FC = () => {
                 <Text style={{ flex: 1, fontSize: 24, color: '#86909C', textAlign: 'center' }}>完本</Text>
                 <Text style={{ flex: 1, fontSize: 24, color: '#86909C', textAlign: 'center' }}>笔记</Text>
               </View>
-              {annualReport.monthlyData.map((m) => (
-                <View key={m.month} style={{ display: 'flex', alignItems: 'center', padding: '16rpx 0', borderBottom: '1rpx solid #F2F3F5' }}>
-                  <Text style={{ flex: 1, fontSize: 26, color: '#1D2129', fontWeight: 500 }}>{m.month}月</Text>
-                  <Text style={{ flex: 1, fontSize: 26, color: '#4E5969', textAlign: 'center' }}>{formatTime(m.minutes)}</Text>
-                  <Text style={{ flex: 1, fontSize: 26, color: '#4E5969', textAlign: 'center' }}>{m.finished}本</Text>
-                  <Text style={{ flex: 1, fontSize: 26, color: '#4E5969', textAlign: 'center' }}>{m.notes}条</Text>
-                </View>
-              ))}
+              {annualReport.monthlyData.map((m) => {
+                const mNum = parseInt(m.month.split('-')[1], 10);
+                return (
+                  <View key={m.month} style={{ display: 'flex', alignItems: 'center', padding: '16rpx 0', borderBottom: '1rpx solid #F2F3F5' }}>
+                    <Text style={{ flex: 1, fontSize: 26, color: '#1D2129', fontWeight: 500 }}>{mNum}月</Text>
+                    <Text style={{ flex: 1, fontSize: 26, color: '#4E5969', textAlign: 'center' }}>{formatTime(m.readingTime)}</Text>
+                    <Text style={{ flex: 1, fontSize: 26, color: '#4E5969', textAlign: 'center' }}>{m.finishedBooks}本</Text>
+                    <Text style={{ flex: 1, fontSize: 26, color: '#4E5969', textAlign: 'center' }}>{m.noteCount}条</Text>
+                  </View>
+                );
+              })}
             </View>
 
             <View className={styles.section}>

@@ -77,6 +77,7 @@ interface AppState {
   getMonthlyReport: (month?: string) => MonthlyReport;
   getAnnualReport: (year?: number) => AnnualReport;
   exportMonthlyReportPDF: (month?: string) => Promise<string>;
+  exportAnnualReportPDF: (year?: number) => Promise<string>;
 }
 
 const getInitialState = (): Pick<
@@ -254,13 +255,19 @@ const useAppStore = create<AppState>((set, get) => ({
           if (p.userId !== 'me') return p;
           return { ...p, readingMinutes: p.readingMinutes + minutes };
         });
+        const foe = participants.find((p) => p.userId !== 'me');
+        let foeDailyAdd = 0;
+        if (foe && minutes > 0) {
+          foeDailyAdd = Math.max(0, Math.round(minutes * (0.4 + Math.random() * 0.8)));
+          foe.readingMinutes += foeDailyAdd;
+        }
         const dailyRecords = [...(c.dailyRecords || [])];
         const todayRecord = dailyRecords.find((r) => r.date === today);
         if (todayRecord) {
           todayRecord.myMinutes += minutes;
+          todayRecord.opponentMinutes += foeDailyAdd;
         } else {
-          const opponentParticipant = participants.find((p) => p.userId !== 'me');
-          dailyRecords.push({ date: today, myMinutes: minutes, opponentMinutes: opponentParticipant?.readingMinutes || 0 });
+          dailyRecords.push({ date: today, myMinutes: minutes, opponentMinutes: foeDailyAdd });
         }
         return { ...c, participants, myProgress: c.myProgress + minutes, dailyRecords };
       });
@@ -811,7 +818,6 @@ const useAppStore = create<AppState>((set, get) => ({
     const startOfMonth = new Date(report.month + '-01T00:00:00').getTime();
     const endOfMonth = new Date(report.month + '-01T00:00:00');
     endOfMonth.setMonth(endOfMonth.getMonth() + 1);
-    const endTime = endOfMonth.getTime();
     const daysInMonth = new Date(endOfMonth.getFullYear(), endOfMonth.getMonth(), 0).getDate();
 
     const dailyData: { day: number; minutes: number }[] = [];
@@ -903,18 +909,27 @@ const useAppStore = create<AppState>((set, get) => ({
     </div>
   </div>`;
 
-    const fileName = `阅读报告_${report.month}.pdf`;
+    const fileName = `Yuedu_Report_${report.month}.pdf`;
 
     try {
       if (process.env.TARO_ENV === 'h5' && typeof window !== 'undefined') {
         const container = document.createElement('div');
         container.style.position = 'fixed';
-        container.style.left = '-9999px';
+        container.style.left = '-10000px';
         container.style.top = '0';
+        container.style.zIndex = '-1';
+        container.style.background = '#fff';
         container.innerHTML = htmlContent;
         document.body.appendChild(container);
 
-        const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+        await new Promise((r) => setTimeout(r, 100));
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('portrait', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -934,14 +949,147 @@ const useAppStore = create<AppState>((set, get) => ({
           heightLeft -= pdfHeight;
         }
 
-        pdf.save(`阅读报告_${report.month}.pdf`);
-        document.body.removeChild(container);
+        pdf.save(fileName);
+        if (container.parentNode) container.parentNode.removeChild(container);
         Taro.showToast({ title: 'PDF已生成并下载', icon: 'success', duration: 2000 });
       } else {
         const fs = Taro.getFileSystemManager();
-        const filePath = `${Taro.env.USER_DATA_PATH || ''}/${fileName.replace('.pdf', '.html')}`;
+        const filePath = `${Taro.env.USER_DATA_PATH || ''}/Yuedu_Report_${report.month}.html`;
         fs.writeFileSync(filePath, htmlContent, 'utf8');
         Taro.showToast({ title: '报告已生成', icon: 'success' });
+      }
+      return fileName;
+    } catch (e) {
+      console.warn('导出失败', e);
+      throw e;
+    }
+  },
+
+  exportAnnualReportPDF: async (year) => {
+    const report = get().getAnnualReport(year);
+
+    const annualMaxMinutes = Math.max(30, ...report.monthlyData.map((m) => m.readingTime));
+
+    const htmlContent = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #fff; color: #1D2129; width: 794px; padding: 40px;">
+    <div style="background: linear-gradient(135deg, #FF9A3C 0%, #FFB76B 100%); color: white; padding: 50px 40px; border-radius: 20px; text-align: center;">
+      <h1 style="font-size: 38px; margin-bottom: 10px; letter-spacing: 2px;">🎉 ${report.year}年度阅读总结</h1>
+      <p style="font-size: 18px; opacity: 0.92;">全年阅读足迹 · 年终回顾</p>
+    </div>
+
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #FF9A3C;">年度核心数据</div>
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1; background: #FFF6EC; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #FF9A3C; line-height: 1.2;">${Math.floor(report.totalReadingTime / 60)}<span style="font-size: 14px; color: #FF9A3C; margin-left: 4px; font-weight: 500;">小时${report.totalReadingTime % 60}分</span></div>
+          <div style="font-size: 14px; color: #86909C; margin-top: 6px;">年度总时长</div>
+        </div>
+        <div style="flex: 1; background: #FFF6EC; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #FF9A3C; line-height: 1.2;">${report.finishedBooks}<span style="font-size: 14px; color: #FF9A3C; margin-left: 4px; font-weight: 500;">本</span></div>
+          <div style="font-size: 14px; color: #86909C; margin-top: 6px;">完本数量</div>
+        </div>
+        <div style="flex: 1; background: #FFF6EC; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #FF9A3C; line-height: 1.2;">${report.totalNotes}<span style="font-size: 14px; color: #FF9A3C; margin-left: 4px; font-weight: 500;">条</span></div>
+          <div style="font-size: 14px; color: #86909C; margin-top: 6px;">笔记总数</div>
+        </div>
+        <div style="flex: 1; background: #FFF6EC; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #FF9A3C; line-height: 1.2;">${report.totalActiveDays}<span style="font-size: 14px; color: #FF9A3C; margin-left: 4px; font-weight: 500;">天</span></div>
+          <div style="font-size: 14px; color: #86909C; margin-top: 6px;">活跃天数</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #FF9A3C;">月度阅读时长趋势</div>
+      <div style="margin-top: 10px;">
+        <div style="display: flex; align-items: flex-end; gap: 6px; height: 200px; padding: 0 6px; border-bottom: 1px solid #E5E6EB;">
+          ${report.monthlyData.map((m) => `<div style="flex: 1; background: ${m.readingTime === 0 ? '#F2F3F5' : 'linear-gradient(180deg, #FF9A3C 0%, #FFB76B 100%)'}; border-radius: 4px 4px 0 0; min-height: 4px; height: ${Math.max(4, (m.readingTime / annualMaxMinutes) * 180)}px;"></div>`).join('')}
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 8px; padding: 0 6px;">
+          ${report.monthlyData.map((m) => `<div style="flex: 1; text-align: center; font-size: 11px; color: #86909C;">${m.month.split('-')[1]}月</div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #FF9A3C;">月度明细</div>
+      <div style="margin-top: 10px; border-radius: 12px; overflow: hidden; border: 1px solid #F2F3F5;">
+        <div style="display: flex; padding: 14px 18px; background: #FAFAFA; font-size: 14px; font-weight: 600; color: #86909C;">
+          <div style="flex: 1;">月份</div>
+          <div style="flex: 1; text-align: center;">阅读时长</div>
+          <div style="flex: 1; text-align: center;">完本</div>
+          <div style="flex: 1; text-align: center;">笔记</div>
+        </div>
+        ${report.monthlyData.map((m) => `
+        <div style="display: flex; padding: 12px 18px; border-top: 1px solid #F2F3F5; font-size: 14px; color: #4E5969;">
+          <div style="flex: 1; color: #1D2129; font-weight: 500;">${m.month.split('-')[1]}月</div>
+          <div style="flex: 1; text-align: center;">${formatTimeStore(m.readingTime)}</div>
+          <div style="flex: 1; text-align: center;">${m.finishedBooks}本</div>
+          <div style="flex: 1; text-align: center;">${m.noteCount}条</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    ${report.topCategories.length > 0 ? `
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #FF9A3C;">最常读分类 Top10</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+        ${report.topCategories.map((c) => `<span style="padding: 10px 18px; background: #FFF6EC; color: #FF9A3C; border-radius: 20px; font-size: 14px; font-weight: 600;">${c.category} · ${c.count}本</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #F2F3F5; text-align: center; color: #86909C; font-size: 13px;">
+      由 悦读 APP 自动生成 · ${report.year}年终总结 · 生成时间 ${new Date().toLocaleString('zh-CN')}
+    </div>
+  </div>`;
+
+    const fileName = `Yuedu_Annual_${report.year}.pdf`;
+
+    try {
+      if (process.env.TARO_ENV === 'h5' && typeof window !== 'undefined') {
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-10000px';
+        container.style.top = '0';
+        container.style.zIndex = '-1';
+        container.style.background = '#fff';
+        container.innerHTML = htmlContent;
+        document.body.appendChild(container);
+
+        await new Promise((r) => setTimeout(r, 100));
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('portrait', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position = -(imgHeight - heightLeft);
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight;
+        }
+
+        pdf.save(fileName);
+        if (container.parentNode) container.parentNode.removeChild(container);
+        Taro.showToast({ title: '年度报告PDF已下载', icon: 'success', duration: 2000 });
+      } else {
+        const fs = Taro.getFileSystemManager();
+        const filePath = `${Taro.env.USER_DATA_PATH || ''}/Yuedu_Annual_${report.year}.html`;
+        fs.writeFileSync(filePath, htmlContent, 'utf8');
+        Taro.showToast({ title: '年度报告已生成', icon: 'success' });
       }
       return fileName;
     } catch (e) {

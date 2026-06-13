@@ -51,14 +51,7 @@ const ChallengePage: React.FC = () => {
   };
 
   const getDailyRecordsForChallenge = (challenge: Challenge) => {
-    const start = challenge.startTime;
-    const end = challenge.endTime;
-    return readingRecords
-      .filter((r) => {
-        const t = new Date(r.date).getTime();
-        return t >= start && t <= end;
-      })
-      .slice(-7);
+    return (challenge.dailyRecords || []).slice(-7);
   };
 
   const handleCreateChallenge = () => {
@@ -87,7 +80,8 @@ const ChallengePage: React.FC = () => {
     const daysLeft = getDaysLeft(challenge.endTime);
     const winner = challenge.participants.find((p) => p.isWinner);
     const dailyRecords = getDailyRecordsForChallenge(challenge);
-    const totalMyMinutes = dailyRecords.reduce((sum, r) => sum + r.minutes, 0);
+    const totalMyMinutes = dailyRecords.reduce((sum, r) => sum + (r as any).myMinutes, 0);
+    const totalFoeMinutes = dailyRecords.reduce((sum, r) => sum + (r as any).opponentMinutes, 0);
 
     let msg = `目标：${formatTime(challenge.targetMinutes)}\n`;
     if (challenge.status === 'ongoing') {
@@ -97,11 +91,18 @@ const ChallengePage: React.FC = () => {
     msg += `${foe?.userName || '对手'}：${foe ? formatTime(foe.readingMinutes) : '0分钟'}（${foePct}%）`;
     if (challenge.status === 'finished') {
       msg += `\n\n🏆 胜者：${winner ? winner.userName : '无'}`;
-      if (dailyRecords.length > 0) {
-        msg += `\n📊 每日进度：共${dailyRecords.length}天有记录，累计${formatTime(totalMyMinutes)}`;
-        const avgDaily = Math.round(totalMyMinutes / dailyRecords.length);
-        msg += `\n日均阅读：${formatTime(avgDaily)}`;
-      }
+    }
+    if (dailyRecords.length > 0) {
+      msg += `\n\n📊 每日进度（最近${dailyRecords.length}天）：`;
+      dailyRecords.forEach((d) => {
+        const dr = d as any;
+        const myMin = dr.myMinutes || 0;
+        const foeMin = dr.opponentMinutes || 0;
+        const lead = myMin > foeMin ? '我领先' : myMin < foeMin ? `${foe?.userName || '对手'}领先` : '平手';
+        msg += `\n· ${dr.date}：我${formatTime(myMin)} vs ${foe?.userName || '对手'}${formatTime(foeMin)}（${lead}）`;
+      });
+      const avgDaily = dailyRecords.length > 0 ? Math.round(totalMyMinutes / dailyRecords.length) : 0;
+      msg += `\n\n我日均：${formatTime(avgDaily)}`;
     }
     Taro.showModal({
       title: challenge.title,
@@ -147,7 +148,10 @@ const ChallengePage: React.FC = () => {
               const foe = challenge.participants.find((p) => p.userId !== 'me');
               const myPct = getProgressPercent(challenge, 'me');
               const dailyRecords = getDailyRecordsForChallenge(challenge);
-              const dailyMax = Math.max(...dailyRecords.map((d) => d.minutes), 1);
+              const dailyMax = Math.max(
+                1,
+                ...dailyRecords.map((d) => Math.max((d as any).myMinutes || 0, (d as any).opponentMinutes || 0))
+              );
               return (
                 <View
                   key={challenge.id}
@@ -188,23 +192,55 @@ const ChallengePage: React.FC = () => {
                   </View>
 
                   {dailyRecords.length > 0 ? (
-                    <View className={styles.dailyChart}>
-                      {dailyRecords.map((d, i) => {
-                        const height = dailyMax > 0 ? (d.minutes / dailyMax) * 100 : 0;
-                        return (
-                          <View key={i} className={styles.dailyBar}>
-                            <View
-                              className={styles.dailyBarFill}
-                              style={{ height: `${height}%` }}
-                            />
-                            <Text className={styles.dailyBarLabel}>{d.minutes}m</Text>
-                          </View>
-                        );
-                      })}
-                    </View>
+                    <>
+                      <View style={{ display: 'flex', gap: 12, marginTop: 16, marginBottom: 8 }}>
+                        <View style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <View style={{ width: 14, height: 14, borderRadius: 3, background: '#4A7BFD' }} />
+                          <Text style={{ fontSize: 22, color: '#4E5969' }}>我</Text>
+                        </View>
+                        <View style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <View style={{ width: 14, height: 14, borderRadius: 3, background: '#FF9A3C' }} />
+                          <Text style={{ fontSize: 22, color: '#4E5969' }}>{foe?.userName || '对手'}</Text>
+                        </View>
+                      </View>
+                      <View className={styles.dailyChart}>
+                        {dailyRecords.map((d, i) => {
+                          const dr = d as any;
+                          const myMin = dr.myMinutes || 0;
+                          const foeMin = dr.opponentMinutes || 0;
+                          const myH = dailyMax > 0 ? (myMin / dailyMax) * 100 : 0;
+                          const foeH = dailyMax > 0 ? (foeMin / dailyMax) * 100 : 0;
+                          return (
+                            <View key={i} className={styles.dailyBar}>
+                              <View style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', flex: 1, gap: 2 }}>
+                                <View
+                                  style={{
+                                    width: '100%',
+                                    background: 'linear-gradient(180deg, #FF9A3C 0%, #FFB76B 100%)',
+                                    borderRadius: '2px 2px 0 0',
+                                    height: `${foeH}%`,
+                                    minHeight: foeH > 0 ? 2 : 0,
+                                  }}
+                                />
+                                <View
+                                  style={{
+                                    width: '100%',
+                                    background: 'linear-gradient(180deg, #4A7BFD 0%, #7BA1FF 100%)',
+                                    borderRadius: '2px 2px 0 0',
+                                    height: `${myH}%`,
+                                    minHeight: myH > 0 ? 2 : 0,
+                                  }}
+                                />
+                              </View>
+                              <Text className={styles.dailyBarLabel}>{dr.date.slice(5)}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </>
                   ) : (
                     <View className={styles.dailyChart}>
-                      <Text className={styles.dailyBarLabel}>暂无每日记录</Text>
+                      <Text className={styles.dailyBarLabel}>暂无每日记录，开始阅读后双方进度会实时更新</Text>
                     </View>
                   )}
 
