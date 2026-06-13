@@ -5,25 +5,35 @@ import { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import BooklistCard from '@/components/BooklistCard';
 import BookCard from '@/components/BookCard';
-import { mockBooks, mockDailyPlans, mockReadingRecords } from '@/data/books';
-import { hotBooklists } from '@/data/booklists';
 import { formatTime } from '@/utils';
 import { Book, DailyPlan } from '@/types';
+import useAppStore from '@/store';
 
 const HomePage: React.FC = () => {
-  const [readingBooks, setReadingBooks] = useState<Book[]>(
-    mockBooks.filter((b) => b.status === 'reading')
-  );
-  const [todayPlans, setTodayPlans] = useState<DailyPlan[]>(mockDailyPlans);
-  const [recommendBooks] = useState<Book[]>(mockBooks.slice(0, 4));
+  const books = useAppStore((s) => s.books);
+  const readingRecords = useAppStore((s) => s.readingRecords);
+  const booklists = useAppStore((s) => s.booklists);
+  const generateDailyPlans = useAppStore((s) => s.generateDailyPlans);
+  const generateRecommendBooks = useAppStore((s) => s.generateRecommendBooks);
+
+  const [todayPlans, setTodayPlans] = useState<DailyPlan[]>([]);
+  const [recommendBooks, setRecommendBooks] = useState<Book[]>([]);
 
   useDidShow(() => {
-    console.log('[Home] 页面显示');
+    setTodayPlans(generateDailyPlans());
+    setRecommendBooks(generateRecommendBooks());
   });
 
-  const totalReadingTime = mockReadingRecords.reduce((sum, r) => sum + r.minutes, 0);
-  const finishedBooks = mockBooks.filter((b) => b.status === 'finished').length;
-  const streakDays = 7;
+  const readingBooks = books.filter((b) => b.status === 'reading');
+  const totalReadingTime = readingRecords.reduce((sum, r) => sum + r.minutes, 0);
+  const finishedBooks = books.filter((b) => b.status === 'finished').length;
+
+  const activeDays = readingRecords.filter((r) => r.minutes > 0).length;
+  const streakDays = activeDays > 0 ? activeDays : 0;
+
+  const hotBooklists = [...booklists]
+    .sort((a, b) => b.likes + b.collections * 2 - (a.likes + a.collections * 2))
+    .slice(0, 3);
 
   const handleSearch = () => {
     Taro.navigateTo({ url: '/pages/search/index' });
@@ -38,6 +48,8 @@ const HomePage: React.FC = () => {
       case 'read':
         if (readingBooks.length > 0) {
           Taro.navigateTo({ url: `/pages/reader/index?bookId=${readingBooks[0].id}` });
+        } else {
+          Taro.showToast({ title: '先去添加书籍吧', icon: 'none' });
         }
         break;
       case 'add':
@@ -56,15 +68,21 @@ const HomePage: React.FC = () => {
     Taro.switchTab({ url: '/pages/community/index' });
   };
 
+  const handleRefreshRecommend = () => {
+    setRecommendBooks(generateRecommendBooks());
+    Taro.showToast({ title: '已刷新', icon: 'none' });
+  };
+
   const onPullDownRefresh = useCallback(() => {
-    console.log('[Home] 下拉刷新');
+    setTodayPlans(generateDailyPlans());
+    setRecommendBooks(generateRecommendBooks());
     setTimeout(() => {
       Taro.stopPullDownRefresh();
-    }, 1000);
-  }, []);
+    }, 800);
+  }, [generateDailyPlans, generateRecommendBooks]);
 
   const todayPlan = todayPlans[0];
-  const todayBook = readingBooks[0];
+  const todayBook = todayPlan ? books.find((b) => b.id === todayPlan.bookId) : readingBooks[0];
 
   return (
     <ScrollView
@@ -95,7 +113,7 @@ const HomePage: React.FC = () => {
           </View>
           <View className={styles.statItem}>
             <Text className={styles.statValue}>{streakDays}天</Text>
-            <Text className={styles.statLabel}>连续阅读</Text>
+            <Text className={styles.statLabel}>活跃天数</Text>
           </View>
         </View>
       </View>
@@ -104,7 +122,7 @@ const HomePage: React.FC = () => {
         <View className={styles.section}>
           <View className={styles.sectionHeader}>
             <Text className={styles.sectionTitle}>今日阅读计划</Text>
-            <Text className={styles.moreLink}>查看全部</Text>
+            <Text className={styles.moreLink}>{todayPlans.length}项</Text>
           </View>
 
           {todayPlan && todayBook ? (
@@ -128,7 +146,7 @@ const HomePage: React.FC = () => {
                       className={styles.progressFill}
                       style={{
                         width: `${Math.min(
-                          (todayPlan.completedPages / todayPlan.targetPages) * 100,
+                          (todayPlan.completedPages / Math.max(todayPlan.targetPages, 1)) * 100,
                           100
                         )}%`,
                       }}
@@ -144,7 +162,44 @@ const HomePage: React.FC = () => {
               </View>
             </View>
           ) : (
-            <View className={styles.emptyState}>暂无阅读计划，去添加一本书吧~</View>
+            <View className={styles.emptyState}>
+              <Text style={{ fontSize: 60 }}>📚</Text>
+              <Text style={{ marginTop: 16 }}>暂无阅读计划</Text>
+              <Button
+                className={styles.startReadBtn}
+                style={{ marginTop: 20 }}
+                onClick={() => handleQuickAction('add')}
+              >
+                去添加书籍
+              </Button>
+            </View>
+          )}
+
+          {todayPlans.length > 1 && (
+            <View style={{ marginTop: 20 }}>
+              {todayPlans.slice(1).map((plan) => {
+                const bk = books.find((b) => b.id === plan.bookId);
+                if (!bk) return null;
+                return (
+                  <View key={plan.bookId} style={{ display: 'flex', alignItems: 'center', padding: '16rpx 0', borderTop: '1rpx solid #f2f3f5' }}>
+                    <Image src={bk.cover} style={{ width: 60, height: 80, borderRadius: 6 }} mode="aspectFill" />
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                      <Text style={{ fontSize: 26, fontWeight: 500, color: '#1D2129' }}>{bk.title}</Text>
+                      <Text style={{ fontSize: 22, color: '#86909C', marginTop: 4 }}>
+                        目标 {plan.targetMinutes} 分钟 · 已完成 {plan.completedMinutes} 分钟
+                      </Text>
+                    </View>
+                    <Button
+                      className={styles.startReadBtn}
+                      style={{ width: 120, height: 56, fontSize: 22 }}
+                      onClick={() => handleStartRead(bk.id)}
+                    >
+                      阅读
+                    </Button>
+                  </View>
+                );
+              })}
+            </View>
           )}
         </View>
 
@@ -190,7 +245,9 @@ const HomePage: React.FC = () => {
         <View className={styles.section}>
           <View className={styles.sectionHeader}>
             <Text className={styles.sectionTitle}>为你推荐</Text>
-            <Text className={styles.moreLink}>换一批</Text>
+            <Text className={styles.moreLink} onClick={handleRefreshRecommend}>
+              换一批 ↻
+            </Text>
           </View>
           <View className={styles.recommendList}>
             {recommendBooks.map((book) => (

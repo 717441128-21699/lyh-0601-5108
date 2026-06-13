@@ -4,20 +4,22 @@ import Taro from '@tarojs/taro';
 import { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
-import { mockBooks } from '@/data/books';
+import useAppStore from '@/store';
 import { calculateReadingProgress } from '@/utils';
 import { Book } from '@/types';
 
-const categories = [
-  { key: 'all', label: '全部' },
-  { key: 'reading', label: '在读' },
-  { key: 'finished', label: '已读完' },
-  { key: 'wish', label: '想读' },
-];
-
 const BookshelfPage: React.FC = () => {
+  const books = useAppStore((state) => state.books);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [books, setBooks] = useState<Book[]>(mockBooks);
+
+  const categories = useMemo(() => {
+    const cats: { key: string; label: string }[] = [{ key: 'all', label: '全部' }];
+    const uniqueCategories = Array.from(new Set(books.map((b) => b.category))).filter(Boolean);
+    uniqueCategories.forEach((cat) => {
+      cats.push({ key: cat, label: cat });
+    });
+    return cats;
+  }, [books]);
 
   useDidShow(() => {
     console.log('[Bookshelf] 页面显示');
@@ -25,7 +27,7 @@ const BookshelfPage: React.FC = () => {
 
   const filteredBooks = useMemo(() => {
     if (activeCategory === 'all') return books;
-    return books.filter((book) => book.status === activeCategory);
+    return books.filter((book) => book.category === activeCategory);
   }, [books, activeCategory]);
 
   const handleSearch = () => {

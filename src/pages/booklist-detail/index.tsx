@@ -1,32 +1,32 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
-import Taro, { useRouter, useDidShow } from '@tarojs/taro';
+import Taro, { useRouter } from '@tarojs/taro';
 import styles from './index.module.scss';
 import Tag from '@/components/Tag';
 import BookCard from '@/components/BookCard';
-import { mockBooklists } from '@/data/booklists';
-import { mockBooks } from '@/data/books';
 import { formatNumber, formatRelativeTime } from '@/utils';
-import { Booklist, Book } from '@/types';
+import { Book } from '@/types';
+import useAppStore from '@/store';
 
 const BooklistDetailPage: React.FC = () => {
   const router = useRouter();
   const booklistId = router.params.id || '1';
 
-  const [booklist, setBooklist] = useState<Booklist | undefined>(
-    mockBooklists.find((b) => b.id === booklistId)
-  );
+  const allBooklists = useAppStore((state) => state.booklists);
+  const allBooks = useAppStore((state) => state.books);
+  const toggleBooklistLike = useAppStore((state) => state.toggleBooklistLike);
+  const toggleBooklistCollect = useAppStore((state) => state.toggleBooklistCollect);
 
-  const [books, setBooks] = useState<Book[]>([]);
+  const booklist = useMemo(() => {
+    return allBooklists.find((b) => b.id === booklistId);
+  }, [allBooklists, booklistId]);
 
-  useDidShow(() => {
-    if (booklist) {
-      const listBooks = booklist.books
-        .map((id) => mockBooks.find((b) => b.id === id))
-        .filter(Boolean) as Book[];
-      setBooks(listBooks);
-    }
-  });
+  const books: Book[] = useMemo(() => {
+    if (!booklist) return [];
+    return booklist.books
+      .map((id) => allBooks.find((b) => b.id === id))
+      .filter(Boolean) as Book[];
+  }, [booklist, allBooks]);
 
   const handleBack = () => {
     Taro.navigateBack();
@@ -34,20 +34,12 @@ const BooklistDetailPage: React.FC = () => {
 
   const handleLike = () => {
     if (!booklist) return;
-    setBooklist({
-      ...booklist,
-      isLiked: !booklist.isLiked,
-      likes: booklist.isLiked ? booklist.likes - 1 : booklist.likes + 1,
-    });
+    toggleBooklistLike(booklist.id);
   };
 
   const handleCollect = () => {
     if (!booklist) return;
-    setBooklist({
-      ...booklist,
-      isCollected: !booklist.isCollected,
-      collections: booklist.isCollected ? booklist.collections - 1 : booklist.collections + 1,
-    });
+    toggleBooklistCollect(booklist.id);
   };
 
   const handleShare = () => {

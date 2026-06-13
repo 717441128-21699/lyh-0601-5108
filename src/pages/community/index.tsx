@@ -1,19 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
 import BooklistCard from '@/components/BooklistCard';
-import { mockBooklists, hotBooklists } from '@/data/booklists';
 import { formatNumber } from '@/utils';
-import { Booklist } from '@/types';
+import useAppStore from '@/store';
 
 const tags = ['全部', '认知升级', '成长', '文学', '科幻', '商业', '心理学', '历史'];
 
 const CommunityPage: React.FC = () => {
   const [activeTag, setActiveTag] = useState('全部');
-  const [booklists, setBooklists] = useState<Booklist[]>(mockBooklists);
+  const booklists = useAppStore((state) => state.booklists);
+
+  const hotBooklists = useMemo(() => {
+    return [...booklists]
+      .sort((a, b) => (b.likes + b.collections) - (a.likes + a.collections))
+      .slice(0, 3);
+  }, [booklists]);
+
+  const filteredBooklists = useMemo(() => {
+    if (activeTag === '全部') return booklists;
+    return booklists.filter((bl) => bl.tags.includes(activeTag));
+  }, [booklists, activeTag]);
 
   useDidShow(() => {
     console.log('[Community] 页面显示');
@@ -90,7 +100,7 @@ const CommunityPage: React.FC = () => {
           <Text className={styles.sectionTitle}>精选书单</Text>
         </View>
         <View className={styles.booklistList}>
-          {booklists.map((booklist) => (
+          {filteredBooklists.map((booklist) => (
             <BooklistCard key={booklist.id} booklist={booklist} type="large" />
           ))}
         </View>

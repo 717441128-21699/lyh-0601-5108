@@ -1,16 +1,19 @@
 import React, { useEffect } from 'react';
 import { useDidShow, useDidHide } from '@tarojs/taro';
-// 全局样式
 import './app.scss';
+import useAppStore from '@/store';
 
 function App(props) {
-  // 可以使用所有的 React Hooks
-  useEffect(() => {});
+  const initStore = useAppStore((s) => s.initStore);
 
-  // 对应 onShow
-  useDidShow(() => {});
+  useEffect(() => {
+    initStore();
+  }, [initStore]);
 
-  // 对应 onHide
+  useDidShow(() => {
+    initStore();
+  });
+
   useDidHide(() => {});
 
   return props.children;

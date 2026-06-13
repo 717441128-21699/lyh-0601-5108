@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, Image, Button, Input, Textarea } from '@tarojs/components';
 import Taro, { useRouter, useDidShow, useDidHide } from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockBooks, mockNotes } from '@/data/books';
+import useAppStore from '@/store';
 import { calculateReadingProgress, formatTime } from '@/utils';
 import { Book, Note } from '@/types';
 
@@ -10,12 +10,19 @@ const ReaderPage: React.FC = () => {
   const router = useRouter();
   const bookId = router.params.bookId || '1';
 
-  const [book, setBook] = useState<Book | undefined>(
-    mockBooks.find((b) => b.id === bookId)
+  const { books, notes: allNotes, addReadingRecord, addNote } = useAppStore((s) => ({
+    books: s.books,
+    notes: s.notes,
+    addReadingRecord: s.addReadingRecord,
+    addNote: s.addNote,
+  }));
+
+  const book = useMemo<Book | undefined>(() => books.find((b) => b.id === bookId), [books, bookId]);
+  const notes = useMemo<Note[]>(
+    () => allNotes.filter((n) => n.bookId === bookId).slice(0, 3),
+    [allNotes, bookId]
   );
-  const [notes, setNotes] = useState<Note[]>(
-    mockNotes.filter((n) => n.bookId === bookId).slice(0, 3)
-  );
+
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -96,30 +103,60 @@ const ReaderPage: React.FC = () => {
     });
   };
 
-  const handleFinish = () => {
+  const askForNewPage = (): Promise<number | undefined> => {
+    return new Promise((resolve) => {
+      const defaultPage = book?.currentPage || 0;
+      Taro.showModal({
+        title: '更新阅读进度',
+        content: `请输入当前读到的页码（当前：${defaultPage} / ${book?.totalPages || 0}）\n留空则不更新进度`,
+        editable: true,
+        placeholderText: String(defaultPage),
+        success: (res) => {
+          if (res.confirm) {
+            const input = res.content?.trim();
+            if (input && !isNaN(Number(input))) {
+              const page = parseInt(input, 10);
+              resolve(Math.max(0, page));
+            } else {
+              resolve(undefined);
+            }
+          } else {
+            resolve(undefined);
+          }
+        },
+        fail: () => resolve(undefined),
+      });
+    });
+  };
+
+  const handleFinish = async () => {
     const minutes = Math.floor(elapsedSeconds / 60);
     if (minutes < 1) {
       Taro.showToast({ title: '阅读时间太短啦~', icon: 'none' });
       return;
     }
 
-    Taro.showModal({
+    const confirmRes = await Taro.showModal({
       title: '结束阅读',
       content: `本次阅读 ${formatTime(minutes)}，确定结束吗？`,
-      success: (res) => {
-        if (res.confirm) {
-          setIsRunning(false);
-          Taro.showToast({
-            title: `已记录 ${formatTime(minutes)}`,
-            icon: 'success',
-          });
-          console.log('[Reader] 结束阅读，时长:', minutes, '分钟');
-          setTimeout(() => {
-            Taro.navigateBack();
-          }, 1500);
-        }
-      },
+    }).catch(() => ({ confirm: false }));
+
+    if (!confirmRes.confirm) return;
+
+    setIsRunning(false);
+
+    const newPage = await askForNewPage();
+
+    addReadingRecord(bookId, minutes, newPage);
+
+    Taro.showToast({
+      title: `已记录 ${formatTime(minutes)}`,
+      icon: 'success',
     });
+    console.log('[Reader] 结束阅读，时长:', minutes, '分钟, 新页码:', newPage);
+    setTimeout(() => {
+      Taro.navigateBack();
+    }, 1500);
   };
 
   const handleAddTextNote = () => {
@@ -131,7 +168,14 @@ const ReaderPage: React.FC = () => {
       count: 1,
       sizeType: ['compressed'],
       sourceType: ['camera', 'album'],
-      success: () => {
+      success: (res) => {
+        const imageUrl = res.tempFilePaths?.[0] || res.tempFiles?.[0]?.path;
+        addNote({
+          bookId,
+          content: '拍照笔记',
+          type: 'image',
+          imageUrl,
+        });
         Taro.showToast({ title: '拍照笔记已保存', icon: 'success' });
         console.log('[Reader] 添加拍照笔记');
       },
@@ -147,21 +191,18 @@ const ReaderPage: React.FC = () => {
       return;
     }
 
-    const newNote: Note = {
-      id: Date.now().toString(),
-      bookId: bookId,
+    addNote({
+      bookId,
       content: noteContent,
       type: 'text',
       pageNumber: notePage ? parseInt(notePage) : undefined,
-      createTime: Date.now(),
-    };
+    });
 
-    setNotes([newNote, ...notes]);
     setShowNoteModal(false);
     setNoteContent('');
     setNotePage('');
     Taro.showToast({ title: '笔记已保存', icon: 'success' });
-    console.log('[Reader] 保存笔记:', newNote);
+    console.log('[Reader] 保存笔记');
   };
 
   if (!book) {

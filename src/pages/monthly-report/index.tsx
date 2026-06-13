@@ -1,53 +1,69 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Button, ScrollView } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockReadingRecords, mockBooks, mockNotes } from '@/data/books';
 import { formatTime } from '@/utils';
-
-const categories = [
-  { name: '文学', count: 4, percent: 40 },
-  { name: '历史', count: 2, percent: 20 },
-  { name: '成长', count: 2, percent: 20 },
-  { name: '心理', count: 1, percent: 10 },
-  { name: '科幻', count: 1, percent: 10 },
-];
-
-const highlights = [
-  { icon: '🏆', text: '本月最长单次阅读', value: '120分钟' },
-  { icon: '📖', text: '本月读完书籍', value: '2本' },
-  { icon: '✍️', text: '新增笔记数量', value: '5条' },
-  { icon: '🔥', text: '连续阅读天数', value: '7天' },
-];
+import useAppStore from '@/store';
 
 const MonthlyReportPage: React.FC = () => {
-  const totalMinutes = mockReadingRecords.reduce((sum, r) => sum + r.minutes, 0);
-  const finishedBooks = mockBooks.filter((b) => b.status === 'finished').length;
-  const readingDays = mockReadingRecords.filter((r) => r.minutes > 0).length;
-  const completionRate = Math.round((readingDays / 30) * 100);
+  const getMonthlyReport = useAppStore((state) => state.getMonthlyReport);
+  const exportMonthlyReportPDF = useAppStore((state) => state.exportMonthlyReportPDF);
+  const readingRecords = useAppStore((state) => state.readingRecords);
+  const notes = useAppStore((state) => state.notes);
+  const books = useAppStore((state) => state.books);
+
+  const report = useMemo(() => getMonthlyReport(), [getMonthlyReport]);
+
+  const categories = useMemo(() => {
+    const maxCount = Math.max(...report.categories.map((c) => c.count), 1);
+    return report.categories.map((c) => ({
+      name: c.category,
+      count: c.count,
+      percent: Math.round((c.count / maxCount) * 100),
+    }));
+  }, [report.categories]);
+
+  const highlights = useMemo(() => [
+    { icon: '🏆', text: '日均阅读时长', value: `${report.dailyAverage}分钟` },
+    { icon: '📖', text: '本月读完书籍', value: `${report.finishedBooks}本` },
+    { icon: '✍️', text: '新增笔记数量', value: `${report.noteCount}条` },
+    { icon: '🔥', text: '完成率', value: `${report.completionRate}%` },
+  ], [report]);
 
   const handleShare = () => {
     Taro.showToast({ title: '分享功能开发中', icon: 'none' });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     Taro.showLoading({ title: '生成中...' });
-    setTimeout(() => {
+    try {
+      await exportMonthlyReportPDF();
       Taro.hideLoading();
-      Taro.showToast({ title: '报告已生成', icon: 'success' });
-      console.log('[MonthlyReport] 导出月度报告');
-    }, 1500);
+    } catch (e) {
+      Taro.hideLoading();
+      Taro.showToast({ title: '导出失败，请重试', icon: 'none' });
+    }
   };
 
   const weekDays = ['一', '二', '三', '四', '五', '六', '日'];
-  const chartData = mockReadingRecords.slice(-28);
-  const maxMinutes = Math.max(...chartData.map((d) => d.minutes));
+  const chartData = readingRecords.slice(-28);
+  const maxMinutes = Math.max(...chartData.map((d) => d.minutes), 1);
+
+  const totalMinutes = report.totalReadingTime;
+  const finishedBooks = report.finishedBooks;
+  const noteCount = report.noteCount;
+  const completionRate = report.completionRate;
+  const readingDays = Math.round((report.completionRate / 100) * new Date().getDate());
+
+  const now = new Date();
+  const monthStr = report.month;
+  const [year, month] = monthStr.split('-');
 
   return (
     <ScrollView className={styles.page} scrollY>
       <View className={styles.header}>
-        <Text className={styles.month}>6月阅读报告</Text>
-        <Text className={styles.subtitle}>2024年6月1日 - 6月30日</Text>
+        <Text className={styles.month}>{parseInt(month, 10)}月阅读报告</Text>
+        <Text className={styles.subtitle}>{year}年{month}月1日 - {month}月{new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate()}日</Text>
 
         <View className={styles.statsGrid}>
           <View className={styles.statCard}>
@@ -131,7 +147,7 @@ const MonthlyReportPage: React.FC = () => {
           <Text className={styles.sectionTitle}>笔记统计</Text>
           <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around' }}>
             <View style={{ textAlign: 'center' }}>
-              <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#4A7BFD' }}>{mockNotes.length}</Text>
+              <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#4A7BFD' }}>{noteCount}</Text>
               <Text style={{ fontSize: 24, color: '#86909C', marginTop: 8 }}>总笔记数</Text>
             </View>
             <View style={{ textAlign: 'center' }}>
@@ -139,7 +155,7 @@ const MonthlyReportPage: React.FC = () => {
               <Text style={{ fontSize: 24, color: '#86909C', marginTop: 8 }}>笔记类型</Text>
             </View>
             <View style={{ textAlign: 'center' }}>
-              <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#00B42A' }}>3本</Text>
+              <Text style={{ fontSize: 36, fontWeight: 'bold', color: '#00B42A' }}>{report.bookCount}本</Text>
               <Text style={{ fontSize: 24, color: '#86909C', marginTop: 8 }}>涉及书籍</Text>
             </View>
           </View>

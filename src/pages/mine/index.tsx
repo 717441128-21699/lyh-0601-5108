@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
-import { mockBooks, mockNotes, mockReadingRecords } from '@/data/books';
-import { mockMedals } from '@/data/challenges';
 import { formatTime } from '@/utils';
+import useAppStore from '@/store';
 
 const menuItems = [
   { icon: '📊', label: '月度报告', type: 'menuIcon1', action: 'monthly-report' },
@@ -26,14 +25,32 @@ const settingItems = [
 ];
 
 const MinePage: React.FC = () => {
+  const user = useAppStore((state) => state.user);
+  const books = useAppStore((state) => state.books);
+  const notes = useAppStore((state) => state.notes);
+  const medals = useAppStore((state) => state.medals);
+  const readingRecords = useAppStore((state) => state.readingRecords);
+
   useDidShow(() => {
     console.log('[Mine] 页面显示');
   });
 
-  const totalReadingTime = mockReadingRecords.reduce((sum, r) => sum + r.minutes, 0);
-  const bookCount = mockBooks.length;
-  const noteCount = mockNotes.length;
-  const obtainedMedals = mockMedals.filter((m) => m.isObtained);
+  const stats = useMemo(() => {
+    const totalReadingTime = readingRecords.reduce((sum, r) => sum + r.minutes, 0);
+    const finishedCount = books.filter((b) => b.status === 'finished').length;
+    const readingCount = books.filter((b) => b.status === 'reading').length;
+    return {
+      totalReadingTime: user.totalReadingTime || totalReadingTime,
+      bookCount: user.bookCount || books.length,
+      finishedCount,
+      readingCount,
+    };
+  }, [user, books, readingRecords]);
+
+  const totalReadingTime = stats.totalReadingTime;
+  const bookCount = stats.bookCount;
+  const noteCount = notes.length;
+  const obtainedMedals = medals.filter((m) => m.isObtained);
 
   const handleMenuClick = (action: string) => {
     switch (action) {
@@ -64,14 +81,14 @@ const MinePage: React.FC = () => {
         <View className={styles.profile}>
           <Image
             className={styles.avatar}
-            src="https://picsum.photos/id/64/200/200"
+            src={user.avatar}
             mode="aspectFill"
           />
           <View className={styles.profileInfo}>
-            <Text className={styles.nickname}>爱读书的小书虫</Text>
+            <Text className={styles.nickname}>{user.name}</Text>
             <View className={styles.levelBadge}>
               <Text className={styles.levelIcon}>⭐</Text>
-              <Text className={styles.levelText}>Lv.5 阅读达人</Text>
+              <Text className={styles.levelText}>Lv.{user.level} 阅读达人</Text>
             </View>
           </View>
         </View>
@@ -112,12 +129,12 @@ const MinePage: React.FC = () => {
           <View className={styles.sectionHeader}>
             <Text className={styles.sectionTitle}>我的勋章</Text>
             <Text className={styles.moreLink} onClick={() => handleMenuClick('medal')}>
-              全部 ({obtainedMedals.length}/{mockMedals.length})
+              全部 ({obtainedMedals.length}/{medals.length})
             </Text>
           </View>
           <ScrollView className={styles.medalScroll} scrollX enhanced showScrollbar={false}>
             <View className={styles.medalList}>
-              {mockMedals.map((medal) => (
+              {medals.map((medal) => (
                 <View key={medal.id} className={styles.medalItem}>
                   <Text
                     className={`${styles.medalIcon} ${!medal.isObtained && styles.medalLocked}`}

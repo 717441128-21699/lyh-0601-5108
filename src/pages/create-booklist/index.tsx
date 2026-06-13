@@ -4,8 +4,8 @@ import Taro, { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import Tag from '@/components/Tag';
 import BookCard from '@/components/BookCard';
-import { mockBooks } from '@/data/books';
 import { Book } from '@/types';
+import useAppStore from '@/store';
 
 const availableTags = ['认知升级', '成长', '文学', '科幻', '商业', '心理学', '历史', '小说', '治愈', '经典'];
 
@@ -15,6 +15,10 @@ const CreateBooklistPage: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedBooks, setSelectedBooks] = useState<Book[]>([]);
   const [showBookPicker, setShowBookPicker] = useState(false);
+  const [cover, setCover] = useState<string | undefined>();
+
+  const storeBooks = useAppStore((state) => state.books);
+  const createBooklist = useAppStore((state) => state.createBooklist);
 
   useDidShow(() => {
     console.log('[CreateBooklist] 页面显示');
@@ -43,7 +47,15 @@ const CreateBooklistPage: React.FC = () => {
   };
 
   const handleCoverUpload = () => {
-    Taro.showToast({ title: '上传封面功能开发中', icon: 'none' });
+    Taro.chooseImage({
+      count: 1,
+      success: (res) => {
+        setCover(res.tempFilePaths[0]);
+      },
+      fail: () => {
+        Taro.showToast({ title: '上传封面功能开发中', icon: 'none' });
+      },
+    });
   };
 
   const handleSubmit = () => {
@@ -55,10 +67,21 @@ const CreateBooklistPage: React.FC = () => {
       Taro.showToast({ title: '请至少添加一本书', icon: 'none' });
       return;
     }
-    Taro.showToast({ title: '书单创建成功', icon: 'success' });
-    setTimeout(() => {
-      Taro.navigateBack();
-    }, 1500);
+    try {
+      createBooklist({
+        title: title.trim(),
+        description: description.trim(),
+        cover,
+        tags: selectedTags,
+        books: selectedBooks.map((b) => b.id),
+      });
+      Taro.showToast({ title: '书单创建成功', icon: 'success' });
+      setTimeout(() => {
+        Taro.navigateBack();
+      }, 1000);
+    } catch (e) {
+      Taro.showToast({ title: '创建失败，请重试', icon: 'none' });
+    }
   };
 
   return (
@@ -159,7 +182,7 @@ const CreateBooklistPage: React.FC = () => {
           <View className={styles.bookPicker}>
             <Text className={styles.pickerTitle}>选择书籍</Text>
             <View className={styles.pickerList}>
-              {mockBooks.map((book) => {
+              {storeBooks.map((book) => {
                 const isSelected = selectedBooks.find((b) => b.id === book.id);
                 return (
                   <View

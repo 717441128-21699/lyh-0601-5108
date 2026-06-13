@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, Image, ScrollView, Button, Input, Textarea } from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import classnames from 'classnames';
-import { mockBooks } from '@/data/books';
+import useAppStore from '@/store';
 import { Book } from '@/types';
 
 type AddMode = 'search' | 'manual';
@@ -12,10 +12,16 @@ const categories = ['文学', '历史', '科幻', '成长', '心理', '商业', 
 const defaultTags = ['经典', '必读', '推荐', '治愈', '思维', '认知'];
 
 const AddBookPage: React.FC = () => {
+  const books = useAppStore((state) => state.books);
+  const addBook = useAppStore((state) => state.addBook);
+  const generateRecommendBooks = useAppStore((state) => state.generateRecommendBooks);
+
   const [mode, setMode] = useState<AddMode>('search');
   const [keyword, setKeyword] = useState('');
   const [searchResults, setSearchResults] = useState<Book[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+
+  const recommendBooks = useMemo(() => generateRecommendBooks(), [generateRecommendBooks]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -38,13 +44,22 @@ const AddBookPage: React.FC = () => {
     if (!keyword.trim()) return;
 
     const kw = keyword.trim().toLowerCase();
-    const results = mockBooks.filter(
-      (b) =>
+    const existingTitles = new Set(books.map((b) => b.title));
+    const allSearchable = [...books, ...recommendBooks];
+    const seen = new Set<string>();
+    const results: Book[] = [];
+    for (const b of allSearchable) {
+      if (seen.has(b.title)) continue;
+      const matches =
         b.title.toLowerCase().includes(kw) ||
         b.author.toLowerCase().includes(kw) ||
-        (b.isbn && b.isbn.includes(kw))
-    );
-    setSearchResults(results);
+        (b.isbn && b.isbn.includes(kw));
+      if (matches) {
+        seen.add(b.title);
+        results.push(b);
+      }
+    }
+    setSearchResults(results.filter((b) => !existingTitles.has(b.title)));
     setHasSearched(true);
   };
 
@@ -54,10 +69,46 @@ const AddBookPage: React.FC = () => {
       content: `确定要将《${book.title}》添加到书架吗？`,
       success: (res) => {
         if (res.confirm) {
+          addBook({
+            title: book.title,
+            author: book.author,
+            cover: book.cover,
+            category: book.category,
+            tags: book.tags,
+            totalPages: book.totalPages,
+            description: book.description,
+            isbn: book.isbn,
+            publisher: book.publisher,
+            publishDate: book.publishDate,
+            rating: book.rating,
+          });
           Taro.showToast({ title: '已添加到书架', icon: 'success' });
+          setTimeout(() => {
+            Taro.navigateBack();
+          }, 1500);
         }
       },
     });
+  };
+
+  const handleAddFromRecommend = (book: Book) => {
+    addBook({
+      title: book.title,
+      author: book.author,
+      cover: book.cover,
+      category: book.category,
+      tags: book.tags,
+      totalPages: book.totalPages,
+      description: book.description,
+      isbn: book.isbn,
+      publisher: book.publisher,
+      publishDate: book.publishDate,
+      rating: book.rating,
+    });
+    Taro.showToast({ title: '已添加到书架', icon: 'success' });
+    setTimeout(() => {
+      Taro.navigateBack();
+    }, 1500);
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -94,6 +145,18 @@ const AddBookPage: React.FC = () => {
       Taro.showToast({ title: '请输入作者', icon: 'none' });
       return;
     }
+    addBook({
+      title: formData.title,
+      author: formData.author,
+      cover: formData.cover || undefined,
+      category: formData.category || undefined,
+      totalPages: formData.totalPages ? Number(formData.totalPages) : undefined,
+      description: formData.description || undefined,
+      isbn: formData.isbn || undefined,
+      publisher: formData.publisher || undefined,
+      publishDate: formData.publishDate || undefined,
+      tags: formData.tags.length > 0 ? formData.tags : undefined,
+    });
     Taro.showToast({ title: '添加成功', icon: 'success' });
     setTimeout(() => {
       Taro.navigateBack();
@@ -146,7 +209,7 @@ const AddBookPage: React.FC = () => {
             <View className={styles.searchTips}>
               <Text className={styles.tipsTitle}>快捷添加</Text>
               <View className={styles.recommendList}>
-                {mockBooks.slice(0, 6).map((book) => (
+                {recommendBooks.map((book) => (
                   <View key={book.id} className={styles.recommendItem}>
                     <Image
                       className={styles.recommendCover}
@@ -156,7 +219,7 @@ const AddBookPage: React.FC = () => {
                     <Text className={styles.recommendTitle}>{book.title}</Text>
                     <Button
                       className={styles.addBtn}
-                      onClick={() => handleAddBook(book)}
+                      onClick={() => handleAddFromRecommend(book)}
                     >
                       + 添加
                     </Button>

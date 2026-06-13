@@ -299,3 +299,150 @@
   font-size: $font-size-md;
   color: $color-text-tertiary;
 }
+
+.modalMask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $page-padding;
+}
+
+.modalBox {
+  width: 100%;
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalTitle {
+  display: block;
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+  text-align: center;
+}
+
+.modalSubtitle {
+  display: block;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  text-align: center;
+  margin-top: $spacing-xs;
+  margin-bottom: $spacing-xl;
+}
+
+.modalSection {
+  margin-bottom: $spacing-lg;
+}
+
+.modalLabel {
+  display: block;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.targetGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-sm;
+}
+
+.targetItem {
+  padding: $spacing-md $spacing-sm;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  text-align: center;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  border: 2rpx solid transparent;
+  transition: all $transition-fast;
+}
+
+.targetItemActive {
+  background: $color-primary-bg;
+  color: $color-primary;
+  border-color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.friendScroll {
+  width: 100%;
+}
+
+.friendList {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-xs 0;
+}
+
+.friendItem {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+  background: $color-bg-page;
+  border: 2rpx solid transparent;
+  transition: all $transition-fast;
+}
+
+.friendItemActive {
+  background: $color-primary-bg;
+  border-color: $color-primary;
+}
+
+.friendAvatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: $radius-round;
+}
+
+.friendName {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  @include text-ellipsis;
+  max-width: 120rpx;
+}
+
+.friendItemActive .friendName {
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.modalActions {
+  display: flex;
+  gap: $spacing-md;
+  margin-top: $spacing-lg;
+}
+
+.modalCancelBtn {
+  @include button-reset;
+  flex: 1;
+  height: $button-height-lg;
+  background: $color-bg-page;
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  border-radius: $radius-button;
+}
+
+.modalConfirmBtn {
+  @include button-reset;
+  flex: 2;
+  height: $button-height-lg;
+  background: $gradient-accent;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  border-radius: $radius-button;
+  box-shadow: 0 8rpx 24rpx rgba(255, 154, 60, 0.3);
+}

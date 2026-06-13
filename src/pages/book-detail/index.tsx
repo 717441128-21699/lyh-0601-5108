@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
 import Tag from '@/components/Tag';
 import ProgressRing from '@/components/ProgressRing';
-import { mockBooks, mockNotes } from '@/data/books';
+import useAppStore from '@/store';
 import { calculateReadingProgress, formatTime, formatRelativeTime } from '@/utils';
 import { Book, Note } from '@/types';
 
@@ -12,12 +12,13 @@ const BookDetailPage: React.FC = () => {
   const router = useRouter();
   const bookId = router.params.id || '1';
 
-  const [book, setBook] = useState<Book | undefined>(
-    mockBooks.find((b) => b.id === bookId)
-  );
-  const [notes, setNotes] = useState<Note[]>(
-    mockNotes.filter((n) => n.bookId === bookId)
-  );
+  const { books, notes: allNotes } = useAppStore((s) => ({
+    books: s.books,
+    notes: s.notes,
+  }));
+
+  const book = useMemo<Book | undefined>(() => books.find((b) => b.id === bookId), [books, bookId]);
+  const notes = useMemo<Note[]>(() => allNotes.filter((n) => n.bookId === bookId), [allNotes, bookId]);
 
   useDidShow(() => {
     console.log('[BookDetail] 页面显示，bookId:', bookId);
