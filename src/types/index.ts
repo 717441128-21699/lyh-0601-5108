@@ -13,6 +13,7 @@ export interface Book {
   publisher?: string;
   publishDate?: string;
   rating?: number;
+  review?: string;
   addTime: number;
   lastReadTime?: number;
   status: 'reading' | 'finished' | 'wish';
@@ -56,6 +57,7 @@ export interface Challenge {
   status: 'ongoing' | 'finished' | 'upcoming';
   participants: ChallengeParticipant[];
   myProgress: number;
+  dailyRecords?: Array<{ date: string; myMinutes: number; opponentMinutes: number }>;
 }
 
 export interface ChallengeParticipant {
@@ -111,4 +113,20 @@ export interface User {
 export interface ReadingRecord {
   date: string;
   minutes: number;
+}
+
+export interface AnnualReport {
+  year: number;
+  totalReadingTime: number;
+  totalBooks: number;
+  finishedBooks: number;
+  totalNotes: number;
+  totalActiveDays: number;
+  monthlyData: Array<{
+    month: string;
+    readingTime: number;
+    finishedBooks: number;
+    noteCount: number;
+  }>;
+  topCategories: Array<{ category: string; count: number }>;
 }

@@ -210,6 +210,78 @@
   width: 100%;
 }
 
+.medalTime {
+  font-size: 18rpx;
+  color: $color-text-tertiary;
+  text-align: center;
+  margin-top: 2rpx;
+}
+
+.challengeList {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.challengeRecordItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.challengeRecordTitle {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  font-weight: $font-weight-medium;
+  flex: 1;
+  @include text-ellipsis;
+  margin-right: $spacing-md;
+}
+
+.winTag {
+  padding: 4rpx 16rpx;
+  border-radius: 16rpx;
+  background: #FFF3E6;
+  color: #FF9A3C;
+  font-size: 22rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.loseTag {
+  padding: 4rpx 16rpx;
+  border-radius: 16rpx;
+  background: #F2F3F5;
+  color: #86909C;
+  font-size: 22rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.challengeEmpty {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  padding: $spacing-xl 0;
+  text-align: center;
+}
+
+.challengeEmptyText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+}
+
 .listCard {
   background: $color-bg-card;
   border-radius: $radius-lg;

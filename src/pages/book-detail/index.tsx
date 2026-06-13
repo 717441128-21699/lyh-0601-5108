@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
 import Taro, { useRouter, useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
@@ -8,17 +8,52 @@ import useAppStore from '@/store';
 import { calculateReadingProgress, formatTime, formatRelativeTime } from '@/utils';
 import { Book, Note } from '@/types';
 
+type FilterType = 'all' | 'text' | 'image';
+
 const BookDetailPage: React.FC = () => {
   const router = useRouter();
   const bookId = router.params.id || '1';
+  const [filterType, setFilterType] = useState<FilterType>('all');
 
-  const { books, notes: allNotes } = useAppStore((s) => ({
+  const { books, notes: allNotes, updateBook } = useAppStore((s) => ({
     books: s.books,
     notes: s.notes,
+    updateBook: s.updateBook,
   }));
 
   const book = useMemo<Book | undefined>(() => books.find((b) => b.id === bookId), [books, bookId]);
-  const notes = useMemo<Note[]>(() => allNotes.filter((n) => n.bookId === bookId), [allNotes, bookId]);
+  const notes = useMemo<Note[]>(() => {
+    const filtered = allNotes.filter((n) => n.bookId === bookId);
+    return [...filtered].sort((a, b) => b.createTime - a.createTime);
+  }, [allNotes, bookId]);
+
+  const filteredNotes = useMemo<Note[]>(() => {
+    if (filterType === 'all') return notes;
+    return notes.filter((n) => n.type === filterType);
+  }, [notes, filterType]);
+
+  const bookImageUrls = useMemo<string[]>(() => {
+    return notes.filter((n) => n.type === 'image' && n.imageUrl).map((n) => n.imageUrl as string);
+  }, [notes]);
+
+  const handleRate = (rating: number) => {
+    updateBook(bookId, { rating });
+  };
+
+  const handleEditReview = () => {
+    const currentReview = (book as any)?.review || '';
+    Taro.showModal({
+      title: '编辑短评',
+      editable: true,
+      placeholderText: '写下你的读书感受...',
+      content: currentReview,
+      success: (res) => {
+        if (res.confirm && res.content !== undefined) {
+          updateBook(bookId, { rating: book?.rating || 0, review: res.content } as any);
+        }
+      },
+    });
+  };
 
   useDidShow(() => {
     console.log('[BookDetail] 页面显示，bookId:', bookId);
@@ -138,10 +173,30 @@ const BookDetailPage: React.FC = () => {
                 <Text className={styles.metaValue}>{book.isbn}</Text>
               </View>
             )}
-            {book.rating && (
-              <View className={styles.metaItem}>
-                <Text className={styles.metaLabel}>评分</Text>
-                <Text className={styles.metaValue}>⭐ {book.rating}</Text>
+            <View className={styles.metaItem}>
+              <Text className={styles.metaLabel}>评分</Text>
+              <View className={styles.ratingSection}>
+                <View className={styles.ratingStars}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Button
+                      key={star}
+                      className={styles.starBtn}
+                      onClick={() => handleRate(star)}
+                    >
+                      {star <= (book.rating || 0) ? '⭐' : '☆'}
+                    </Button>
+                  ))}
+                </View>
+              </View>
+            </View>
+            {(book as any).review && (
+              <View className={styles.reviewText} onClick={handleEditReview}>
+                <Text>{(book as any).review}</Text>
+              </View>
+            )}
+            {!(book as any).review && (
+              <View className={styles.reviewText} onClick={handleEditReview}>
+                <Text style={{ color: '#C9CDD4' }}>点击添加短评...</Text>
               </View>
             )}
           </View>
@@ -159,9 +214,20 @@ const BookDetailPage: React.FC = () => {
               + 添加笔记
             </Text>
           </View>
-          {notes.length > 0 ? (
+          <View className={styles.noteFilterTabs}>
+            {(['all', 'text', 'image'] as FilterType[]).map((type) => (
+              <Button
+                key={type}
+                className={`${styles.noteFilterTab} ${filterType === type ? styles.noteFilterTabActive : ''}`}
+                onClick={() => setFilterType(type)}
+              >
+                {type === 'all' ? '全部' : type === 'text' ? '✏️ 文字' : '📷 拍照'}
+              </Button>
+            ))}
+          </View>
+          {filteredNotes.length > 0 ? (
             <View className={styles.notesList}>
-              {notes.map((note) => (
+              {filteredNotes.map((note) => (
                 <View key={note.id} className={styles.noteItem}>
                   {note.type === 'image' && note.imageUrl ? (
                     <>
@@ -171,7 +237,7 @@ const BookDetailPage: React.FC = () => {
                         mode="widthFix"
                         onClick={() => {
                           Taro.previewImage({
-                            urls: [note.imageUrl as string],
+                            urls: bookImageUrls,
                             current: note.imageUrl as string,
                           });
                         }}

@@ -6,6 +6,46 @@
   padding-bottom: 160rpx;
 }
 
+.tabBar {
+  display: flex;
+  background: $color-bg-card;
+  padding: 0 $page-padding;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tabItem {
+  flex: 1;
+  text-align: center;
+  padding: $spacing-lg 0;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60rpx;
+    height: 6rpx;
+    border-radius: 3rpx;
+    background: transparent;
+    transition: background $transition-base;
+  }
+}
+
+.tabItemActive {
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+
+  &::after {
+    background: $color-primary;
+  }
+}
+
 .header {
   background: $gradient-primary;
   padding: $spacing-xl $page-padding;

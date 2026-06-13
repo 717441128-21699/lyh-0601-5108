@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import Taro from '@tarojs/taro';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   Book,
   Note,
@@ -11,6 +13,7 @@ import {
   MonthlyReport,
   ReadingRecord,
   User,
+  AnnualReport,
 } from '@/types';
 import { mockBooks, mockNotes, mockDailyPlans, mockReadingRecords } from '@/data/books';
 import { mockBooklists } from '@/data/booklists';
@@ -55,6 +58,7 @@ interface AppState {
 
   addBook: (book: Partial<Book> & { title: string; author: string }) => Book;
   updateBook: (id: string, updates: Partial<Book>) => void;
+  updateBookRating: (id: string, rating: number, review?: string) => void;
   deleteBook: (id: string) => void;
 
   addNote: (note: Partial<Note> & { bookId: string; content: string }) => Note;
@@ -69,8 +73,9 @@ interface AppState {
   checkChallengeCompletion: (challengeId: string) => void;
 
   generateDailyPlans: () => DailyPlan[];
-  generateRecommendBooks: () => Book[];
+  generateRecommendBooks: () => Array<{ book: Book; reason: string }>;
   getMonthlyReport: (month?: string) => MonthlyReport;
+  getAnnualReport: (year?: number) => AnnualReport;
   exportMonthlyReportPDF: (month?: string) => Promise<string>;
 }
 
@@ -179,6 +184,12 @@ const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  updateBookRating: (id, rating, review) => {
+    const updates: Partial<Book> = { rating };
+    if (review !== undefined) updates.review = review;
+    get().updateBook(id, updates);
+  },
+
   deleteBook: (id) => {
     set((state) => ({
       books: state.books.filter((b) => b.id !== id),
@@ -243,7 +254,15 @@ const useAppStore = create<AppState>((set, get) => ({
           if (p.userId !== 'me') return p;
           return { ...p, readingMinutes: p.readingMinutes + minutes };
         });
-        return { ...c, participants, myProgress: c.myProgress + minutes };
+        const dailyRecords = [...(c.dailyRecords || [])];
+        const todayRecord = dailyRecords.find((r) => r.date === today);
+        if (todayRecord) {
+          todayRecord.myMinutes += minutes;
+        } else {
+          const opponentParticipant = participants.find((p) => p.userId !== 'me');
+          dailyRecords.push({ date: today, myMinutes: minutes, opponentMinutes: opponentParticipant?.readingMinutes || 0 });
+        }
+        return { ...c, participants, myProgress: c.myProgress + minutes, dailyRecords };
       });
 
       challenges.forEach((c) => {
@@ -404,7 +423,9 @@ const useAppStore = create<AppState>((set, get) => ({
     if (!challenge || challenge.status !== 'ongoing') return;
 
     const now = Date.now();
-    if (now < challenge.endTime) {
+    const isExpired = now >= challenge.endTime;
+
+    if (!isExpired) {
       const allReached = challenge.participants.every((p) => p.readingMinutes >= challenge.targetMinutes);
       const anyReached = challenge.participants.some((p) => p.readingMinutes >= challenge.targetMinutes);
       if (!allReached && !anyReached) return;
@@ -491,6 +512,7 @@ const useAppStore = create<AppState>((set, get) => ({
       }
     });
 
+    const collectedTags: string[] = [];
     booklists.forEach((bl) => {
       let w = 0;
       if (bl.isCollected) w += 2;
@@ -499,6 +521,7 @@ const useAppStore = create<AppState>((set, get) => ({
       if (w > 0) {
         bl.tags.forEach((t) => {
           tagCount[t] = (tagCount[t] || 0) + w;
+          if (!collectedTags.includes(t)) collectedTags.push(t);
         });
       }
     });
@@ -509,6 +532,7 @@ const useAppStore = create<AppState>((set, get) => ({
       .map(([t]) => t);
 
     const existingIds = new Set(books.map((b) => b.id));
+    const readingBook = books.find((b) => b.status === 'reading');
     const mockRecommends: Book[] = [
       {
         id: 'rec-r1-' + generateId(),
@@ -646,7 +670,18 @@ const useAppStore = create<AppState>((set, get) => ({
       });
 
     scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, 4).map((x) => x.b);
+    return scored.slice(0, 4).map((x) => {
+      const b = x.b;
+      let reason = '';
+      if (readingBook && b.tags.some((t) => readingBook.tags.includes(t) || t === readingBook.category)) {
+        reason = `基于你正在读的《${readingBook.title}》推荐`;
+      } else if (collectedTags.some((t) => b.tags.includes(t) || t === b.category)) {
+        reason = '与你收藏的书单标签匹配';
+      } else {
+        reason = `高评分好书(${b.rating || 4.5})`;
+      }
+      return { book: b, reason };
+    });
   },
 
   getMonthlyReport: (month) => {
@@ -700,6 +735,72 @@ const useAppStore = create<AppState>((set, get) => ({
     };
   },
 
+  getAnnualReport: (year) => {
+    const { books, notes, readingRecords } = get();
+    const targetYear = year || new Date().getFullYear();
+
+    const monthlyData: Array<{ month: string; readingTime: number; finishedBooks: number; noteCount: number }> = [];
+    let totalReadingTime = 0;
+    let totalFinishedBooks = 0;
+    let totalNotes = 0;
+    const activeDaysSet = new Set<string>();
+
+    for (let m = 1; m <= 12; m++) {
+      const monthStr = `${targetYear}-${String(m).padStart(2, '0')}`;
+      const startOfMonth = new Date(targetYear, m - 1, 1).getTime();
+      const endOfMonth = new Date(targetYear, m, 1).getTime();
+
+      const monthRecords = readingRecords.filter((r) => {
+        const t = new Date(r.date).getTime();
+        return t >= startOfMonth && t < endOfMonth;
+      });
+      const readingTime = monthRecords.reduce((sum, r) => sum + r.minutes, 0);
+      monthRecords.forEach((r) => {
+        if (r.minutes > 0) activeDaysSet.add(r.date);
+      });
+
+      const monthNotes = notes.filter((n) => n.createTime >= startOfMonth && n.createTime < endOfMonth);
+      const noteCount = monthNotes.length;
+
+      const finishedInMonth = books.filter(
+        (b) => b.status === 'finished' && b.lastReadTime && b.lastReadTime >= startOfMonth && b.lastReadTime < endOfMonth
+      );
+
+      totalReadingTime += readingTime;
+      totalFinishedBooks += finishedInMonth.length;
+      totalNotes += noteCount;
+
+      monthlyData.push({
+        month: monthStr,
+        readingTime,
+        finishedBooks: finishedInMonth.length,
+        noteCount,
+      });
+    }
+
+    const categoryMap: Record<string, number> = {};
+    books.forEach((b) => {
+      if (b.category) {
+        categoryMap[b.category] = (categoryMap[b.category] || 0) + 1;
+      }
+    });
+    const topCategories = Object.entries(categoryMap)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    return {
+      year: targetYear,
+      totalReadingTime,
+      totalBooks: books.length,
+      finishedBooks: totalFinishedBooks,
+      totalNotes,
+      totalActiveDays: activeDaysSet.size,
+      monthlyData,
+      topCategories,
+    };
+  },
+
   exportMonthlyReportPDF: async (month) => {
     const report = get().getMonthlyReport(month);
     const { books, readingRecords } = get();
@@ -721,186 +822,121 @@ const useAppStore = create<AppState>((set, get) => ({
     }
     const maxMinutes = Math.max(30, ...dailyData.map((d) => d.minutes));
 
-    const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>悦读月度报告_${report.month}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #fff; color: #1D2129; }
-    @page { size: A4; margin: 10mm; }
-    .page { max-width: 1000px; margin: 0 auto; padding: 40px; }
-    .header { background: linear-gradient(135deg, #4A7BFD 0%, #7BA1FF 100%); color: white; padding: 50px 40px; border-radius: 20px; text-align: center; }
-    .header h1 { font-size: 38px; margin-bottom: 10px; letter-spacing: 2px; }
-    .header p { font-size: 18px; opacity: 0.92; }
-    .section { margin-top: 36px; }
-    .section-title { font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .stat-card { background: #F7F8FA; border-radius: 14px; padding: 24px 16px; text-align: center; }
-    .stat-value { font-size: 32px; font-weight: 700; color: #4A7BFD; line-height: 1.2; }
-    .stat-unit { font-size: 14px; color: #4A7BFD; margin-left: 4px; font-weight: 500; }
-    .stat-label { font-size: 14px; color: #4E5969; margin-top: 6px; }
-    .highlight { background: #FFF6EC; border-radius: 14px; padding: 24px 28px; margin-top: 10px; border: 1px solid #FFE4C7; }
-    .highlight h3 { color: #FF9A3C; margin-bottom: 8px; font-size: 18px; }
-    .highlight p { color: #4E5969; line-height: 1.9; font-size: 15px; }
-    .highlight strong { color: #1D2129; }
-    .chart-wrap { margin-top: 10px; }
-    .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 180px; padding: 0 6px; border-bottom: 1px solid #E5E6EB; }
-    .bar { flex: 1; background: linear-gradient(180deg, #4A7BFD 0%, #7BA1FF 100%); border-radius: 4px 4px 0 0; min-height: 4px; transition: all 0.3s; }
-    .bar.zero { background: #F2F3F5; }
-    .bar-labels { display: flex; gap: 4px; margin-top: 8px; padding: 0 6px; }
-    .bar-label { flex: 1; text-align: center; font-size: 10px; color: #86909C; }
-    .books-list { margin-top: 10px; }
-    .book-item { display: flex; gap: 16px; padding: 16px; background: #F7F8FA; border-radius: 12px; margin-bottom: 10px; align-items: center; }
-    .book-cover { width: 50px; height: 70px; border-radius: 6px; background: linear-gradient(135deg, #A0B8FF, #4A7BFD); flex-shrink: 0; }
-    .book-info { flex: 1; }
-    .book-info h4 { font-size: 16px; color: #1D2129; margin-bottom: 4px; }
-    .book-info p { font-size: 13px; color: #86909C; }
-    .categories { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-    .category-tag { padding: 8px 16px; background: #E8F0FF; color: #4A7BFD; border-radius: 20px; font-size: 14px; font-weight: 500; }
-    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #F2F3F5; text-align: center; color: #86909C; font-size: 13px; }
-    .print-tip { background: #E8F0FF; color: #4A7BFD; padding: 14px 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; font-size: 14px; }
-    .print-tip strong { font-size: 16px; }
-    @media print {
-      .print-tip { display: none; }
-      .page { padding: 0; }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="print-tip">
-      <strong>📄 请使用浏览器打印功能保存为 PDF</strong><br/>
-      快捷键：Ctrl + P（Windows）或 Cmd + P（Mac），目标选择「另存为 PDF」
-    </div>
-    <div class="header">
-      <h1>📚 悦读月度报告</h1>
-      <p>${report.month.replace('-', ' 年 ')} 月 · 你的阅读足迹</p>
+    const htmlContent = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #fff; color: #1D2129; width: 794px; padding: 40px;">
+    <div style="background: linear-gradient(135deg, #4A7BFD 0%, #7BA1FF 100%); color: white; padding: 50px 40px; border-radius: 20px; text-align: center;">
+      <h1 style="font-size: 38px; margin-bottom: 10px; letter-spacing: 2px;">📚 悦读月度报告</h1>
+      <p style="font-size: 18px; opacity: 0.92;">${report.month.replace('-', ' 年 ')} 月 · 你的阅读足迹</p>
     </div>
 
-    <div class="section">
-      <div class="section-title">核心数据</div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value">${Math.floor(report.totalReadingTime / 60)}<span class="stat-unit">小时${report.totalReadingTime % 60}分</span></div>
-          <div class="stat-label">累计阅读时长</div>
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD;">核心数据</div>
+      <div style="display: flex; gap: 16px;">
+        <div style="flex: 1; background: #F7F8FA; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #4A7BFD; line-height: 1.2;">${Math.floor(report.totalReadingTime / 60)}<span style="font-size: 14px; color: #4A7BFD; margin-left: 4px; font-weight: 500;">小时${report.totalReadingTime % 60}分</span></div>
+          <div style="font-size: 14px; color: #4E5969; margin-top: 6px;">累计阅读时长</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">${report.bookCount}<span class="stat-unit">本</span></div>
-          <div class="stat-label">阅读书籍数</div>
+        <div style="flex: 1; background: #F7F8FA; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #4A7BFD; line-height: 1.2;">${report.bookCount}<span style="font-size: 14px; color: #4A7BFD; margin-left: 4px; font-weight: 500;">本</span></div>
+          <div style="font-size: 14px; color: #4E5969; margin-top: 6px;">阅读书籍数</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">${report.finishedBooks}<span class="stat-unit">本</span></div>
-          <div class="stat-label">完本数量</div>
+        <div style="flex: 1; background: #F7F8FA; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #4A7BFD; line-height: 1.2;">${report.finishedBooks}<span style="font-size: 14px; color: #4A7BFD; margin-left: 4px; font-weight: 500;">本</span></div>
+          <div style="font-size: 14px; color: #4E5969; margin-top: 6px;">完本数量</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">${report.noteCount}<span class="stat-unit">条</span></div>
-          <div class="stat-label">笔记条数</div>
+        <div style="flex: 1; background: #F7F8FA; border-radius: 14px; padding: 24px 16px; text-align: center;">
+          <div style="font-size: 32px; font-weight: 700; color: #4A7BFD; line-height: 1.2;">${report.noteCount}<span style="font-size: 14px; color: #4A7BFD; margin-left: 4px; font-weight: 500;">条</span></div>
+          <div style="font-size: 14px; color: #4E5969; margin-top: 6px;">笔记条数</div>
         </div>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">本月亮点</div>
-      <div class="highlight">
-        <h3>✨ 本月总结</h3>
-        <p>
-          这个月你一共阅读了 <strong>${Math.floor(report.totalReadingTime / 60)} 小时 ${report.totalReadingTime % 60} 分钟</strong>，
-          活跃 <strong>${report.completionRate}%</strong> 的天数，日均阅读 <strong>${report.dailyAverage} 分钟</strong>。
-          ${report.finishedBooks > 0 ? `你完成了 <strong>${report.finishedBooks}</strong> 本书，太厉害了！` : '继续加油，争取下个月读完更多书～'}
-          ${report.noteCount > 0 ? `累计记录了 <strong>${report.noteCount}</strong> 条读书笔记。` : ''}
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD;">本月亮点</div>
+      <div style="background: #FFF6EC; border-radius: 14px; padding: 24px 28px; border: 1px solid #FFE4C7;">
+        <h3 style="color: #FF9A3C; margin-bottom: 8px; font-size: 18px;">✨ 本月总结</h3>
+        <p style="color: #4E5969; line-height: 1.9; font-size: 15px;">
+          这个月你一共阅读了 <strong style="color: #1D2129;">${Math.floor(report.totalReadingTime / 60)} 小时 ${report.totalReadingTime % 60} 分钟</strong>，
+          活跃 <strong style="color: #1D2129;">${report.completionRate}%</strong> 的天数，日均阅读 <strong style="color: #1D2129;">${report.dailyAverage} 分钟</strong>。
+          ${report.finishedBooks > 0 ? `你完成了 <strong style="color: #1D2129;">${report.finishedBooks}</strong> 本书，太厉害了！` : '继续加油，争取下个月读完更多书～'}
+          ${report.noteCount > 0 ? `累计记录了 <strong style="color: #1D2129;">${report.noteCount}</strong> 条读书笔记。` : ''}
         </p>
       </div>
     </div>
 
     ${report.categories.length > 0 ? `
-    <div class="section">
-      <div class="section-title">阅读偏好</div>
-      <div class="categories">
-        ${report.categories.map((c) => `<span class="category-tag">${c.category} · ${c.count}本</span>`).join('')}
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD;">阅读偏好</div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        ${report.categories.map((c) => `<span style="padding: 8px 16px; background: #E8F0FF; color: #4A7BFD; border-radius: 20px; font-size: 14px; font-weight: 500;">${c.category} · ${c.count}本</span>`).join('')}
       </div>
     </div>` : ''}
 
-    <div class="section">
-      <div class="section-title">每日阅读时长（分钟）</div>
-      <div class="chart-wrap">
-        <div class="chart-bars">
-          ${dailyData
-            .map(
-              (d) =>
-                `<div class="bar ${d.minutes === 0 ? 'zero' : ''}" style="height: ${Math.max(
-                  4,
-                  (d.minutes / maxMinutes) * 160
-                )}px" title="${d.day}日：${d.minutes}分钟"></div>`
-            )
-            .join('')}
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD;">每日阅读时长（分钟）</div>
+      <div style="margin-top: 10px;">
+        <div style="display: flex; align-items: flex-end; gap: 4px; height: 180px; padding: 0 6px; border-bottom: 1px solid #E5E6EB;">
+          ${dailyData.map((d) => `<div style="flex: 1; background: ${d.minutes === 0 ? '#F2F3F5' : 'linear-gradient(180deg, #4A7BFD 0%, #7BA1FF 100%)'}; border-radius: 4px 4px 0 0; min-height: 4px; height: ${Math.max(4, (d.minutes / maxMinutes) * 160)}px;"></div>`).join('')}
         </div>
-        <div class="bar-labels">
-          ${dailyData
-            .map((d) => `<div class="bar-label">${d.day % 5 === 1 || d.day === daysInMonth ? d.day : ''}</div>`)
-            .join('')}
+        <div style="display: flex; gap: 4px; margin-top: 8px; padding: 0 6px;">
+          ${dailyData.map((d) => `<div style="flex: 1; text-align: center; font-size: 10px; color: #86909C;">${d.day % 5 === 1 || d.day === daysInMonth ? d.day : ''}</div>`).join('')}
         </div>
       </div>
     </div>
 
     ${finishedInMonth.length > 0 ? `
-    <div class="section">
-      <div class="section-title">本月读完</div>
-      <div class="books-list">
-        ${finishedInMonth
-          .map(
-            (b) => `
-          <div class="book-item">
-            <div class="book-cover"></div>
-            <div class="book-info">
-              <h4>${b.title}</h4>
-              <p>${b.author} · 共 ${b.totalPages} 页 · 阅读 ${formatTimeStore(b.totalReadingTime)}</p>
-            </div>
-          </div>`
-          )
-          .join('')}
+    <div style="margin-top: 36px;">
+      <div style="font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD;">本月读完</div>
+      <div style="margin-top: 10px;">
+        ${finishedInMonth.map((b) => `
+        <div style="display: flex; gap: 16px; padding: 16px; background: #F7F8FA; border-radius: 12px; margin-bottom: 10px; align-items: center;">
+          <div style="width: 50px; height: 70px; border-radius: 6px; background: linear-gradient(135deg, #A0B8FF, #4A7BFD); flex-shrink: 0;"></div>
+          <div style="flex: 1;">
+            <h4 style="font-size: 16px; color: #1D2129; margin-bottom: 4px;">${b.title}</h4>
+            <p style="font-size: 13px; color: #86909C;">${b.author} · 共 ${b.totalPages} 页 · 阅读 ${formatTimeStore(b.totalReadingTime)}</p>
+          </div>
+        </div>`).join('')}
       </div>
     </div>` : ''}
 
-    <div class="footer">
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #F2F3F5; text-align: center; color: #86909C; font-size: 13px;">
       由 悦读 APP 自动生成 · 生成时间 ${new Date().toLocaleString('zh-CN')}
     </div>
-  </div>
-  <script>
-    window.onload = function() {
-      document.title = '悦读月度报告_${report.month}';
-      setTimeout(function() {
-        if (window.confirm('是否立即打印/保存为 PDF？\\n\\n选择「另存为 PDF」即可保存文件')) {
-          window.print();
-        }
-      }, 500);
-    };
-  </script>
-</body>
-</html>`;
+  </div>`;
 
     const fileName = `阅读报告_${report.month}.pdf`;
 
     try {
       if (process.env.TARO_ENV === 'h5' && typeof window !== 'undefined') {
-        const win = window.open('', '_blank');
-        if (win) {
-          win.document.open();
-          win.document.write(htmlContent);
-          win.document.close();
-          Taro.showToast({ title: '报告已生成，请在新窗口保存为 PDF', icon: 'none', duration: 2500 });
-        } else {
-          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.click();
-          URL.revokeObjectURL(url);
-          Taro.showToast({ title: '报告已在新窗口打开', icon: 'none', duration: 2500 });
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.innerHTML = htmlContent;
+        document.body.appendChild(container);
+
+        const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('portrait', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft > 0) {
+          position = -(imgHeight - heightLeft);
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight;
         }
+
+        pdf.save(`阅读报告_${report.month}.pdf`);
+        document.body.removeChild(container);
+        Taro.showToast({ title: 'PDF已生成并下载', icon: 'success', duration: 2000 });
       } else {
         const fs = Taro.getFileSystemManager();
         const filePath = `${Taro.env.USER_DATA_PATH || ''}/${fileName.replace('.pdf', '.html')}`;
@@ -910,15 +946,6 @@ const useAppStore = create<AppState>((set, get) => ({
       return fileName;
     } catch (e) {
       console.warn('导出失败', e);
-      if (process.env.TARO_ENV === 'h5' && typeof window !== 'undefined') {
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.click();
-        URL.revokeObjectURL(url);
-      }
       throw e;
     }
   },

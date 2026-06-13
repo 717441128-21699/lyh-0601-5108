@@ -3,7 +3,7 @@ import { View, Text, Image, ScrollView, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useDidShow } from '@tarojs/taro';
 import styles from './index.module.scss';
-import { formatTime } from '@/utils';
+import { formatTime, formatRelativeTime } from '@/utils';
 import useAppStore from '@/store';
 
 const menuItems = [
@@ -29,6 +29,7 @@ const MinePage: React.FC = () => {
   const books = useAppStore((state) => state.books);
   const notes = useAppStore((state) => state.notes);
   const medals = useAppStore((state) => state.medals);
+  const challenges = useAppStore((state) => state.challenges);
   const readingRecords = useAppStore((state) => state.readingRecords);
 
   useDidShow(() => {
@@ -51,6 +52,7 @@ const MinePage: React.FC = () => {
   const bookCount = stats.bookCount;
   const noteCount = notes.length;
   const obtainedMedals = medals.filter((m) => m.isObtained);
+  const finishedChallenges = challenges.filter((c) => c.status === 'finished');
 
   const handleMenuClick = (action: string) => {
     switch (action) {
@@ -142,10 +144,51 @@ const MinePage: React.FC = () => {
                     {medal.icon}
                   </Text>
                   <Text className={styles.medalName}>{medal.name}</Text>
+                  {medal.isObtained && medal.obtainTime ? (
+                    <Text className={styles.medalTime}>{formatRelativeTime(medal.obtainTime)}</Text>
+                  ) : null}
                 </View>
               ))}
             </View>
           </ScrollView>
+        </View>
+
+        <View className={styles.section}>
+          <View className={styles.sectionHeader}>
+            <Text className={styles.sectionTitle}>挑战记录</Text>
+            <Text
+              className={styles.moreLink}
+              onClick={() => Taro.navigateTo({ url: '/pages/challenge/index' })}
+            >
+              查看全部
+            </Text>
+          </View>
+          {finishedChallenges.length > 0 ? (
+            <View className={styles.challengeList}>
+              {finishedChallenges.map((challenge) => {
+                const winner = challenge.participants.find((p) => p.isWinner);
+                const isWin = winner?.userId === 'me';
+                return (
+                  <View
+                    key={challenge.id}
+                    className={styles.challengeRecordItem}
+                    onClick={() => Taro.navigateTo({ url: '/pages/challenge/index' })}
+                  >
+                    <Text className={styles.challengeRecordTitle}>{challenge.title}</Text>
+                    <View
+                      className={isWin ? styles.winTag : styles.loseTag}
+                    >
+                      {isWin ? '🏆 胜利' : '未获胜'}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View className={styles.challengeEmpty}>
+              <Text className={styles.challengeEmptyText}>暂无挑战记录</Text>
+            </View>
+          )}
         </View>
 
         <View className={styles.section}>

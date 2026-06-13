@@ -17,11 +17,19 @@ const HomePage: React.FC = () => {
   const generateRecommendBooks = useAppStore((s) => s.generateRecommendBooks);
 
   const [todayPlans, setTodayPlans] = useState<DailyPlan[]>([]);
-  const [recommendBooks, setRecommendBooks] = useState<Book[]>([]);
+  const [recommendBooks, setRecommendBooks] = useState<Array<{ book: Book; reason: string }>>([]);
+
+  const toRecommendItems = (raw: any): Array<{ book: Book; reason: string }> => {
+    if (!raw || !Array.isArray(raw)) return [];
+    return raw.map((item: any) => {
+      if (item && item.book) return item as { book: Book; reason: string };
+      return { book: item as Book, reason: '基于你的阅读偏好推荐' };
+    });
+  };
 
   useDidShow(() => {
     setTodayPlans(generateDailyPlans());
-    setRecommendBooks(generateRecommendBooks());
+    setRecommendBooks(toRecommendItems(generateRecommendBooks()));
   });
 
   const readingBooks = books.filter((b) => b.status === 'reading');
@@ -69,13 +77,13 @@ const HomePage: React.FC = () => {
   };
 
   const handleRefreshRecommend = () => {
-    setRecommendBooks(generateRecommendBooks());
+    setRecommendBooks(toRecommendItems(generateRecommendBooks()));
     Taro.showToast({ title: '已刷新', icon: 'none' });
   };
 
   const onPullDownRefresh = useCallback(() => {
     setTodayPlans(generateDailyPlans());
-    setRecommendBooks(generateRecommendBooks());
+    setRecommendBooks(toRecommendItems(generateRecommendBooks()));
     setTimeout(() => {
       Taro.stopPullDownRefresh();
     }, 800);
@@ -250,8 +258,11 @@ const HomePage: React.FC = () => {
             </Text>
           </View>
           <View className={styles.recommendList}>
-            {recommendBooks.map((book) => (
-              <BookCard key={book.id} book={book} type="horizontal" />
+            {recommendBooks.map((item) => (
+              <View key={item.book.id}>
+                <BookCard book={item.book} type="horizontal" />
+                <Text style={{ fontSize: 22, color: '#86909C', marginTop: 4, paddingLeft: 8 }}>{item.reason}</Text>
+              </View>
             ))}
           </View>
         </View>

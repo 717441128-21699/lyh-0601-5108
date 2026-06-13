@@ -281,3 +281,49 @@
     transform: scale(0.98);
   }
 }
+
+.ratingSection {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.ratingStars {
+  display: flex;
+  gap: 8rpx;
+}
+
+.starBtn {
+  @include button-reset;
+  font-size: 36rpx;
+  padding: 4rpx;
+}
+
+.reviewText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  margin-top: $spacing-sm;
+  line-height: 1.6;
+  padding: $spacing-sm;
+  background: $color-bg-page;
+  border-radius: $radius-sm;
+}
+
+.noteFilterTabs {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+}
+
+.noteFilterTab {
+  padding: 8rpx 24rpx;
+  border-radius: 24rpx;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  background: $color-bg-page;
+}
+
+.noteFilterTabActive {
+  color: white;
+  background: $gradient-primary;
+}

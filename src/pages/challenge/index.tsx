@@ -19,12 +19,19 @@ const ChallengePage: React.FC = () => {
   const friends = useAppStore((s) => s.friends);
   const readingRecords = useAppStore((s) => s.readingRecords);
   const createChallenge = useAppStore((s) => s.createChallenge);
+  const checkChallengeCompletion = useAppStore((s) => s.checkChallengeCompletion);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState(300);
   const [selectedFriendId, setSelectedFriendId] = useState<string>('');
 
-  useDidShow(() => {});
+  useDidShow(() => {
+    challenges.forEach((c) => {
+      if (c.status === 'ongoing' && Date.now() >= c.endTime) {
+        checkChallengeCompletion(c.id);
+      }
+    });
+  });
 
   const ongoingChallenges = challenges.filter((c) => c.status === 'ongoing');
   const historyChallenges = challenges.filter((c) => c.status === 'finished');
@@ -41,6 +48,17 @@ const ChallengePage: React.FC = () => {
     const p = challenge.participants.find((pp) => pp.userId === userId);
     if (!p) return 0;
     return Math.min(100, Math.round((p.readingMinutes / challenge.targetMinutes) * 100));
+  };
+
+  const getDailyRecordsForChallenge = (challenge: Challenge) => {
+    const start = challenge.startTime;
+    const end = challenge.endTime;
+    return readingRecords
+      .filter((r) => {
+        const t = new Date(r.date).getTime();
+        return t >= start && t <= end;
+      })
+      .slice(-7);
   };
 
   const handleCreateChallenge = () => {
@@ -68,13 +86,22 @@ const ChallengePage: React.FC = () => {
     const foePct = foe ? getProgressPercent(challenge, foe.userId) : 0;
     const daysLeft = getDaysLeft(challenge.endTime);
     const winner = challenge.participants.find((p) => p.isWinner);
+    const dailyRecords = getDailyRecordsForChallenge(challenge);
+    const totalMyMinutes = dailyRecords.reduce((sum, r) => sum + r.minutes, 0);
 
     let msg = `目标：${formatTime(challenge.targetMinutes)}\n`;
-    msg += `剩余：${daysLeft}天\n\n`;
+    if (challenge.status === 'ongoing') {
+      msg += `剩余：${daysLeft}天\n\n`;
+    }
     msg += `我：${myP ? formatTime(myP.readingMinutes) : '0分钟'}（${myPct}%）\n`;
     msg += `${foe?.userName || '对手'}：${foe ? formatTime(foe.readingMinutes) : '0分钟'}（${foePct}%）`;
     if (challenge.status === 'finished') {
       msg += `\n\n🏆 胜者：${winner ? winner.userName : '无'}`;
+      if (dailyRecords.length > 0) {
+        msg += `\n📊 每日进度：共${dailyRecords.length}天有记录，累计${formatTime(totalMyMinutes)}`;
+        const avgDaily = Math.round(totalMyMinutes / dailyRecords.length);
+        msg += `\n日均阅读：${formatTime(avgDaily)}`;
+      }
     }
     Taro.showModal({
       title: challenge.title,
@@ -119,6 +146,8 @@ const ChallengePage: React.FC = () => {
               const myP = challenge.participants.find((p) => p.userId === 'me');
               const foe = challenge.participants.find((p) => p.userId !== 'me');
               const myPct = getProgressPercent(challenge, 'me');
+              const dailyRecords = getDailyRecordsForChallenge(challenge);
+              const dailyMax = Math.max(...dailyRecords.map((d) => d.minutes), 1);
               return (
                 <View
                   key={challenge.id}
@@ -157,6 +186,27 @@ const ChallengePage: React.FC = () => {
                       </Text>
                     </View>
                   </View>
+
+                  {dailyRecords.length > 0 ? (
+                    <View className={styles.dailyChart}>
+                      {dailyRecords.map((d, i) => {
+                        const height = dailyMax > 0 ? (d.minutes / dailyMax) * 100 : 0;
+                        return (
+                          <View key={i} className={styles.dailyBar}>
+                            <View
+                              className={styles.dailyBarFill}
+                              style={{ height: `${height}%` }}
+                            />
+                            <Text className={styles.dailyBarLabel}>{d.minutes}m</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <View className={styles.dailyChart}>
+                      <Text className={styles.dailyBarLabel}>暂无每日记录</Text>
+                    </View>
+                  )}
 
                   <View className={styles.progressSection}>
                     <View className={styles.progressBar}>
