@@ -1,0 +1,193 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background-color: $color-bg-page;
+  display: flex;
+  flex-direction: column;
+}
+
+.searchHeader {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-md $page-padding;
+  padding-top: 88rpx;
+  background: $color-bg-card;
+}
+
+.backBtn {
+  @include button-reset;
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 36rpx;
+  color: $color-text-primary;
+  background: transparent;
+}
+
+.searchBox {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 72rpx;
+  padding: 0 $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  gap: $spacing-sm;
+}
+
+.searchIcon {
+  font-size: 28rpx;
+}
+
+.searchInput {
+  flex: 1;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.clearBtn {
+  @include button-reset;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: $radius-round;
+  background: $color-text-tertiary;
+  color: #fff;
+  font-size: 24rpx;
+}
+
+.searchBtn {
+  @include button-reset;
+  height: 72rpx;
+  padding: 0 $spacing-lg;
+  background: $gradient-primary;
+  color: $color-text-white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-button;
+}
+
+.typeTabs {
+  display: flex;
+  background: $color-bg-card;
+  padding: 0 $page-spacing;
+  border-bottom: 1rpx solid $color-divider;
+}
+
+.typeTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  font-size: $font-size-md;
+  color: $color-text-secondary;
+  position: relative;
+}
+
+.typeTabActive {
+  color: $color-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.typeTabActive::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48rpx;
+  height: 6rpx;
+  background: $color-primary;
+  border-radius: 3rpx;
+}
+
+.content {
+  flex: 1;
+  padding: $spacing-lg 0;
+}
+
+.section {
+  background: $color-bg-card;
+  margin: 0 $page-padding $spacing-lg;
+  padding: $spacing-lg;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.sectionHeader .sectionTitle {
+  margin-bottom: 0;
+}
+
+.clearHistoryBtn {
+  @include button-reset;
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  background: transparent;
+  padding: 0;
+}
+
+.keywordList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.keywordTag {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+}
+
+.hotRank {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  color: $color-accent;
+}
+
+.resultsSection {
+  padding: 0 $page-padding;
+}
+
+.resultList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+  gap: $spacing-md;
+}
+
+.emptyIcon {
+  font-size: 80rpx;
+}
+
+.emptyText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+}

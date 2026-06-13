@@ -1,0 +1,210 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $gradient-page;
+  padding-bottom: 120rpx;
+}
+
+.header {
+  padding: $spacing-lg $page-padding;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: $font-size-xxl;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.headerActions {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.iconBtn {
+  @include button-reset;
+  width: 72rpx;
+  height: 72rpx;
+  background: $color-bg-card;
+  border-radius: $radius-round;
+  font-size: 32rpx;
+  box-shadow: $shadow-card;
+
+  &:active {
+    transform: scale(0.95);
+    background: $color-bg-hover;
+  }
+}
+
+.categoryTabs {
+  padding: 0 $page-padding;
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-lg;
+  @include scroll-x-container;
+  overflow-x: auto;
+}
+
+.tabItem {
+  @include scroll-x-item(auto);
+  padding: 16rpx 32rpx;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+  flex-shrink: 0;
+}
+
+.activeTab {
+  background: $gradient-primary;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.bookGrid {
+  padding: 0 $page-padding;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+}
+
+.bookItem {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+}
+
+.coverWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: $radius-md;
+  overflow: hidden;
+  margin-bottom: $spacing-sm;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.progressBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.progressFill {
+  height: 100%;
+  background: $color-accent;
+  transition: width $transition-base;
+}
+
+.bookInfo {
+  padding: 0 4rpx;
+}
+
+.bookTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  line-height: 1.3;
+}
+
+.bookAuthor {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 6rpx;
+  @include text-ellipsis;
+}
+
+.bookProgress {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  margin-top: 10rpx;
+  font-weight: $font-weight-medium;
+}
+
+.statusBadge {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  padding: 4rpx 12rpx;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: $radius-sm;
+  font-size: 20rpx;
+  color: white;
+  backdrop-filter: blur(10rpx);
+}
+
+.addBtn {
+  @include button-reset;
+  position: fixed;
+  right: 40rpx;
+  bottom: 160rpx;
+  width: 112rpx;
+  height: 112rpx;
+  background: $gradient-primary;
+  border-radius: $radius-round;
+  font-size: 48rpx;
+  color: white;
+  box-shadow: 0 8rpx 24rpx rgba(74, 123, 253, 0.4);
+  z-index: 100;
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.emptyIcon {
+  font-size: 120rpx;
+  opacity: 0.3;
+  margin-bottom: $spacing-md;
+}
+
+.emptyText {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+  margin-bottom: $spacing-lg;
+}
+
+.emptyBtn {
+  @include button-reset;
+  height: 80rpx;
+  padding: 0 48rpx;
+  background: $gradient-primary;
+  border-radius: $radius-button;
+  color: white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}

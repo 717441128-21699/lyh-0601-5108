@@ -1,0 +1,295 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $gradient-page;
+  padding-bottom: 40rpx;
+}
+
+.header {
+  position: relative;
+  padding: 100rpx $page-padding 60rpx;
+  background: $gradient-primary;
+  border-radius: 0 0 40rpx 40rpx;
+}
+
+.greeting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.greetingText {
+  color: $color-text-white;
+}
+
+.greetingTitle {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  line-height: 1.3;
+}
+
+.greetingSub {
+  font-size: $font-size-sm;
+  opacity: 0.85;
+  margin-top: 8rpx;
+}
+
+.searchBtn {
+  @include button-reset;
+  width: 72rpx;
+  height: 72rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-round;
+  font-size: 32rpx;
+  color: white;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0.95);
+  }
+}
+
+.statsRow {
+  display: flex;
+  margin-top: 40rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: $radius-lg;
+  padding: $spacing-lg 0;
+  backdrop-filter: blur(10rpx);
+}
+
+.statItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &:not(:last-child) {
+    border-right: 1rpx solid rgba(255, 255, 255, 0.2);
+  }
+}
+
+.statValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+  line-height: 1.2;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 8rpx;
+}
+
+.content {
+  padding: 0 $page-padding;
+  margin-top: -20rpx;
+}
+
+.section {
+  margin-top: $spacing-xl;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.moreLink {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.todayCard {
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  display: flex;
+  align-items: center;
+}
+
+.todayBookCover {
+  width: 160rpx;
+  height: 220rpx;
+  border-radius: $radius-md;
+  flex-shrink: 0;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+}
+
+.todayInfo {
+  flex: 1;
+  margin-left: $spacing-lg;
+  min-width: 0;
+}
+
+.todayLabel {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  background: $color-primary-bg;
+  padding: 6rpx 16rpx;
+  border-radius: $radius-round;
+  display: inline-block;
+  margin-bottom: $spacing-sm;
+}
+
+.todayTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+}
+
+.todayAuthor {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: 8rpx;
+}
+
+.todayProgress {
+  margin-top: $spacing-md;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.progressText {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.progressValue {
+  font-size: $font-size-xs;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.progressBar {
+  height: 12rpx;
+  background: $color-progress-bg;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: $gradient-primary;
+  border-radius: 6rpx;
+  transition: width $transition-base;
+}
+
+.startReadBtn {
+  @include button-reset;
+  margin-top: $spacing-md;
+  height: 64rpx;
+  background: $gradient-primary;
+  border-radius: $radius-button;
+  color: white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  padding: 0 $spacing-lg;
+  align-self: flex-start;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+}
+
+.quickItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-md 0;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.quickIcon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  margin-bottom: $spacing-sm;
+}
+
+.quickIcon1 {
+  background: $color-primary-bg;
+}
+
+.quickIcon2 {
+  background: $color-accent-bg;
+}
+
+.quickIcon3 {
+  background: rgba(0, 180, 42, 0.1);
+}
+
+.quickIcon4 {
+  background: rgba(156, 39, 176, 0.1);
+}
+
+.quickLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.booklistScroll {
+  margin: 0 (-$page-padding);
+  padding: 0 $page-padding;
+}
+
+.booklistList {
+  display: flex;
+  gap: $spacing-md;
+  padding-right: $page-padding;
+  @include scroll-x-container;
+}
+
+.booklistItem {
+  @include scroll-x-item(480rpx);
+  width: 480rpx;
+  flex-shrink: 0;
+}
+
+.recommendList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.emptyState {
+  text-align: center;
+  padding: $spacing-xl 0;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}

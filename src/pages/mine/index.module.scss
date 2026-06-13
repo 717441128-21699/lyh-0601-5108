@@ -1,0 +1,254 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: $gradient-page;
+  padding-bottom: 40rpx;
+}
+
+.header {
+  position: relative;
+  padding: 120rpx $page-padding 80rpx;
+  background: $gradient-primary;
+  border-radius: 0 0 48rpx 48rpx;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: $radius-round;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.profileInfo {
+  flex: 1;
+  margin-left: $spacing-lg;
+  min-width: 0;
+}
+
+.nickname {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-text-white;
+  @include text-ellipsis;
+}
+
+.levelBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 16rpx;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: $radius-round;
+  margin-top: 12rpx;
+}
+
+.levelIcon {
+  font-size: 24rpx;
+  margin-right: 6rpx;
+}
+
+.levelText {
+  font-size: $font-size-xs;
+  color: $color-text-white;
+  font-weight: $font-weight-medium;
+}
+
+.statsCard {
+  display: flex;
+  margin-top: $spacing-xl;
+  background: $color-bg-card;
+  border-radius: $radius-xl;
+  padding: $spacing-lg 0;
+  box-shadow: $shadow-card;
+}
+
+.statItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  &:not(:last-child) {
+    border-right: 1rpx solid $color-divider;
+  }
+}
+
+.statValue {
+  font-size: $font-size-xl;
+  font-weight: $font-weight-bold;
+  color: $color-primary;
+  line-height: 1.2;
+}
+
+.statLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 8rpx;
+}
+
+.content {
+  padding: 0 $page-padding;
+  margin-top: $spacing-xl;
+}
+
+.section {
+  margin-bottom: $spacing-xl;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-md;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.moreLink {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.menuGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg $spacing-sm;
+  box-shadow: $shadow-card;
+}
+
+.menuItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.menuIcon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: $radius-lg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  margin-bottom: $spacing-sm;
+}
+
+.menuIcon1 { background: $color-primary-bg; }
+.menuIcon2 { background: $color-accent-bg; }
+.menuIcon3 { background: rgba(0, 180, 42, 0.1); }
+.menuIcon4 { background: rgba(156, 39, 176, 0.1); }
+.menuIcon5 { background: rgba(255, 159, 67, 0.15); }
+.menuIcon6 { background: rgba(24, 144, 255, 0.1); }
+.menuIcon7 { background: rgba(250, 84, 28, 0.1); }
+.menuIcon8 { background: rgba(114, 46, 209, 0.1); }
+
+.menuLabel {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+}
+
+.medalScroll {
+  margin: 0 (-$page-padding);
+  padding: 0 $page-padding;
+}
+
+.medalList {
+  display: flex;
+  gap: $spacing-md;
+  padding-right: $page-padding;
+  @include scroll-x-container;
+}
+
+.medalItem {
+  @include scroll-x-item(140rpx);
+  width: 140rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+}
+
+.medalIcon {
+  font-size: 56rpx;
+  margin-bottom: $spacing-sm;
+  filter: grayscale(0);
+}
+
+.medalLocked {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
+.medalName {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  text-align: center;
+  @include text-ellipsis;
+  width: 100%;
+}
+
+.listCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  overflow: hidden;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $spacing-lg;
+  border-bottom: 1rpx solid $color-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.listItemLeft {
+  display: flex;
+  align-items: center;
+}
+
+.listItemIcon {
+  font-size: 36rpx;
+  margin-right: $spacing-md;
+}
+
+.listItemText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.listItemArrow {
+  font-size: $font-size-md;
+  color: $color-text-tertiary;
+}

@@ -1,0 +1,356 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.navBar {
+  padding: 80rpx $page-padding 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.backBtn {
+  @include button-reset;
+  width: 64rpx;
+  height: 64rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: $radius-round;
+  font-size: 28rpx;
+  color: white;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.95);
+  }
+}
+
+.pageTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: white;
+}
+
+.placeholder {
+  width: 64rpx;
+}
+
+.bookInfo {
+  display: flex;
+  align-items: center;
+  padding: $spacing-xl $page-padding;
+}
+
+.cover {
+  width: 120rpx;
+  height: 170rpx;
+  border-radius: $radius-sm;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.bookText {
+  flex: 1;
+  margin-left: $spacing-lg;
+  min-width: 0;
+}
+
+.bookTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: white;
+  @include text-ellipsis;
+}
+
+.bookAuthor {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 8rpx;
+  @include text-ellipsis;
+}
+
+.timerSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl 0;
+}
+
+.timerDisplay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: $spacing-xl;
+}
+
+.timerValue {
+  font-size: 120rpx;
+  font-weight: $font-weight-bold;
+  color: white;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, monospace;
+  letter-spacing: 4rpx;
+  line-height: 1;
+}
+
+.timerLabel {
+  font-size: $font-size-md;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: $spacing-md;
+}
+
+.controlBtns {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xl;
+}
+
+.secondaryControl {
+  @include button-reset;
+  width: 100rpx;
+  height: 100rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: $radius-round;
+  font-size: 40rpx;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.95);
+  }
+}
+
+.primaryControl {
+  @include button-reset;
+  width: 160rpx;
+  height: 160rpx;
+  background: $gradient-primary;
+  border-radius: $radius-round;
+  font-size: 56rpx;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12rpx 40rpx rgba(74, 123, 253, 0.4);
+
+  &:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+}
+
+.noteSection {
+  padding: 0 $page-padding $spacing-lg;
+}
+
+.noteTitle {
+  font-size: $font-size-md;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: $spacing-md;
+}
+
+.noteActions {
+  display: flex;
+  gap: $spacing-md;
+}
+
+.noteActionBtn {
+  @include button-reset;
+  flex: 1;
+  height: 88rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: $radius-lg;
+  color: white;
+  font-size: $font-size-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.98);
+  }
+}
+
+.progressSection {
+  padding: 0 $page-padding $spacing-xl;
+}
+
+.progressRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: $spacing-sm;
+}
+
+.progressLabel {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.progressValue {
+  font-size: $font-size-xs;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.progressBar {
+  height: 8rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: $gradient-primary;
+  border-radius: 4rpx;
+  transition: width $transition-base;
+}
+
+.quickNotes {
+  padding: 0 $page-padding;
+  margin-bottom: $spacing-lg;
+}
+
+.quickNotesTitle {
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: $spacing-sm;
+}
+
+.notesList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  max-height: 200rpx;
+  overflow: hidden;
+}
+
+.noteItem {
+  padding: $spacing-sm $spacing-md;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: $radius-md;
+  font-size: $font-size-sm;
+  color: rgba(255, 255, 255, 0.8);
+  @include text-ellipsis-multi(2);
+  line-height: 1.5;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+
+.modalContent {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: $spacing-lg;
+  padding-bottom: calc(#{$spacing-lg} + env(safe-area-inset-bottom));
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $spacing-lg;
+}
+
+.modalTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+}
+
+.modalClose {
+  font-size: 36rpx;
+  color: $color-text-tertiary;
+}
+
+.textarea {
+  width: 100%;
+  height: 240rpx;
+  padding: $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  line-height: 1.6;
+  border: none;
+  resize: none;
+}
+
+.pageInput {
+  margin-top: $spacing-md;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.pageInputLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  flex-shrink: 0;
+}
+
+.pageInputField {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 $spacing-md;
+  background: $color-bg-page;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+}
+
+.modalFooter {
+  margin-top: $spacing-lg;
+  display: flex;
+  gap: $spacing-md;
+}
+
+.cancelBtn {
+  @include button-reset;
+  flex: 1;
+  height: 88rpx;
+  background: $color-bg-page;
+  border-radius: $radius-button;
+  color: $color-text-secondary;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+
+  &:active {
+    background: $color-bg-hover;
+  }
+}
+
+.confirmBtn {
+  @include button-reset;
+  flex: 2;
+  height: 88rpx;
+  background: $gradient-primary;
+  border-radius: $radius-button;
+  color: white;
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}

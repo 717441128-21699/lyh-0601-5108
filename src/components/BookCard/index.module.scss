@@ -1,0 +1,144 @@
+@use '@/styles/variables.scss' as *;
+
+.horizontalCard {
+  display: flex;
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+.coverH {
+  width: 140rpx;
+  height: 200rpx;
+  border-radius: $radius-sm;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  margin-left: $spacing-md;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.titleH {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  @include text-ellipsis;
+}
+
+.authorH {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+  margin-top: 8rpx;
+}
+
+.tags {
+  display: flex;
+  gap: $spacing-xs;
+  margin-top: 12rpx;
+}
+
+.progressSection {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+}
+
+.progressBar {
+  flex: 1;
+  height: 8rpx;
+  background: $color-progress-bg;
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: $gradient-primary;
+  border-radius: 4rpx;
+  transition: width $transition-base;
+}
+
+.progressText {
+  font-size: 22rpx;
+  color: $color-primary;
+  margin-left: $spacing-sm;
+  flex-shrink: 0;
+  font-weight: $font-weight-medium;
+}
+
+.finishedBadge {
+  margin-top: 12rpx;
+}
+
+.verticalCard {
+  width: 200rpx;
+  display: flex;
+  flex-direction: column;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+}
+
+.coverWrapper {
+  position: relative;
+  width: 200rpx;
+  height: 280rpx;
+  border-radius: $radius-md;
+  overflow: hidden;
+  box-shadow: $shadow-card;
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+}
+
+.progressBarVertical {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8rpx;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.progressFillVertical {
+  height: 100%;
+  background: $color-accent;
+  transition: width $transition-base;
+}
+
+.infoVertical {
+  margin-top: $spacing-sm;
+  padding: 0 4rpx;
+}
+
+.title {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  @include text-ellipsis;
+  line-height: 1.3;
+}
+
+.author {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  margin-top: 4rpx;
+  @include text-ellipsis;
+}
