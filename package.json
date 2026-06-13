@@ -53,6 +53,8 @@
     "ajv-keywords": "^5.1.0",
     "classnames": "^2.5.0",
     "dayjs": "^1.11.10",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "zustand": "^4.5.0"

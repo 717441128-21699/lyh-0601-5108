@@ -205,6 +205,22 @@
   line-height: 1.6;
 }
 
+.noteImage {
+  width: 100%;
+  border-radius: $radius-sm;
+  margin-bottom: $spacing-sm;
+  display: block;
+  background: #f2f3f5;
+}
+
+.noteTypeTag {
+  font-size: 22rpx;
+  color: $color-primary;
+  background: rgba(74, 123, 253, 0.1);
+  padding: 4rpx 14rpx;
+  border-radius: 16rpx;
+}
+
 .noteMeta {
   display: flex;
   justify-content: space-between;

@@ -19,6 +19,15 @@ import { generateId, calculateReadingProgress } from '@/utils';
 
 const STORAGE_KEY = 'yuedu_app_store_v1';
 
+const formatTimeStore = (minutes: number): string => {
+  if (!minutes) return '0分钟';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}小时${m}分`;
+  if (h > 0) return `${h}小时`;
+  return `${m}分钟`;
+};
+
 const defaultUser: User = {
   id: 'me',
   name: '读书爱好者',
@@ -75,7 +84,12 @@ const getInitialState = (): Pick<
   booklists: mockBooklists.map((b) => ({ ...b })),
   challenges: mockChallenges.map((c) => ({ ...c })),
   medals: mockMedals.map((m) => ({ ...m })),
-  friends: mockFriends.map((f) => ({ ...f })),
+  friends: mockFriends.map((f) => ({
+    userId: f.id,
+    userName: f.name,
+    userAvatar: f.avatar,
+    readingMinutes: f.readingTime || 0,
+  })),
   dailyPlans: mockDailyPlans.map((d) => ({ ...d })),
   readingRecords: mockReadingRecords.map((r) => ({ ...r })),
 });
@@ -464,28 +478,40 @@ const useAppStore = create<AppState>((set, get) => ({
     const tagCount: Record<string, number> = {};
 
     books.forEach((b) => {
+      const baseWeight = 1;
+      const ratingBonus = (b.rating || 3) * 0.5;
+      const timeBonus = Math.min(b.totalReadingTime / 120, 3);
+      const statusBonus = b.status === 'reading' ? 1.5 : b.status === 'finished' ? 1 : 0.3;
+      const weight = (baseWeight + ratingBonus + timeBonus) * statusBonus;
       b.tags.forEach((t) => {
-        tagCount[t] = (tagCount[t] || 0) + 1;
+        tagCount[t] = (tagCount[t] || 0) + weight;
       });
+      if (b.category) {
+        tagCount[b.category] = (tagCount[b.category] || 0) + weight * 0.5;
+      }
     });
 
     booklists.forEach((bl) => {
-      if (bl.isCollected || bl.isLiked) {
+      let w = 0;
+      if (bl.isCollected) w += 2;
+      if (bl.isLiked) w += 1;
+      if (bl.likes > 10) w += 0.5;
+      if (w > 0) {
         bl.tags.forEach((t) => {
-          tagCount[t] = (tagCount[t] || 0) + 1;
+          tagCount[t] = (tagCount[t] || 0) + w;
         });
       }
     });
 
     const sortedTags = Object.entries(tagCount)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
+      .slice(0, 5)
       .map(([t]) => t);
 
     const existingIds = new Set(books.map((b) => b.id));
     const mockRecommends: Book[] = [
       {
-        id: 'rec-' + generateId(),
+        id: 'rec-r1-' + generateId(),
         title: '思考的艺术',
         author: '文森特·赖安·拉吉罗',
         cover: 'https://picsum.photos/id/180/300/400',
@@ -500,7 +526,7 @@ const useAppStore = create<AppState>((set, get) => ({
         status: 'wish',
       },
       {
-        id: 'rec-' + generateId(),
+        id: 'rec-r2-' + generateId(),
         title: '被讨厌的勇气',
         author: '岸见一郎',
         cover: 'https://picsum.photos/id/106/300/400',
@@ -515,7 +541,7 @@ const useAppStore = create<AppState>((set, get) => ({
         status: 'wish',
       },
       {
-        id: 'rec-' + generateId(),
+        id: 'rec-r3-' + generateId(),
         title: '置身事内',
         author: '兰小欢',
         cover: 'https://picsum.photos/id/30/300/400',
@@ -530,7 +556,7 @@ const useAppStore = create<AppState>((set, get) => ({
         status: 'wish',
       },
       {
-        id: 'rec-' + generateId(),
+        id: 'rec-r4-' + generateId(),
         title: '沙丘',
         author: '弗兰克·赫伯特',
         cover: 'https://picsum.photos/id/29/300/400',
@@ -544,17 +570,83 @@ const useAppStore = create<AppState>((set, get) => ({
         addTime: Date.now(),
         status: 'wish',
       },
+      {
+        id: 'rec-r5-' + generateId(),
+        title: '活着',
+        author: '余华',
+        cover: 'https://picsum.photos/id/20/300/400',
+        category: '文学',
+        tags: ['小说', '经典', '文学'],
+        totalPages: 240,
+        currentPage: 0,
+        totalReadingTime: 0,
+        description: '讲述了农村人福贵悲惨的人生遭遇，中国当代文学的经典。',
+        rating: 4.9,
+        addTime: Date.now(),
+        status: 'wish',
+      },
+      {
+        id: 'rec-r6-' + generateId(),
+        title: '人类简史',
+        author: '尤瓦尔·赫拉利',
+        cover: 'https://picsum.photos/id/48/300/400',
+        category: '历史',
+        tags: ['历史', '认知', '人类学'],
+        totalPages: 440,
+        currentPage: 0,
+        totalReadingTime: 0,
+        description: '从认知革命到科学革命，一部宏大的人类发展史。',
+        rating: 4.8,
+        addTime: Date.now(),
+        status: 'wish',
+      },
+      {
+        id: 'rec-r7-' + generateId(),
+        title: '原则',
+        author: '瑞·达利欧',
+        cover: 'https://picsum.photos/id/56/300/400',
+        category: '商业',
+        tags: ['商业', '思维', '管理'],
+        totalPages: 560,
+        currentPage: 0,
+        totalReadingTime: 0,
+        description: '桥水基金创始人分享的生活与工作原则。',
+        rating: 4.5,
+        addTime: Date.now(),
+        status: 'wish',
+      },
+      {
+        id: 'rec-r8-' + generateId(),
+        title: '三体',
+        author: '刘慈欣',
+        cover: 'https://picsum.photos/id/96/300/400',
+        category: '科幻',
+        tags: ['科幻', '小说', '中国'],
+        totalPages: 680,
+        currentPage: 0,
+        totalReadingTime: 0,
+        description: '中国科幻文学巅峰之作，地球文明与三体世界的史诗。',
+        rating: 4.9,
+        addTime: Date.now(),
+        status: 'wish',
+      },
     ];
 
-    if (sortedTags.length > 0) {
-      mockRecommends.sort((a, b) => {
-        const aScore = a.tags.filter((t) => sortedTags.includes(t)).length;
-        const bScore = b.tags.filter((t) => sortedTags.includes(t)).length;
-        return bScore - aScore;
+    const scored = mockRecommends
+      .filter((b) => !existingIds.has(b.id))
+      .map((b) => {
+        let score = 0;
+        b.tags.forEach((t) => {
+          if (tagCount[t]) score += tagCount[t];
+        });
+        if (tagCount[b.category]) score += tagCount[b.category] * 0.5;
+        score += (b.rating || 3) * 0.3;
+        score += Math.random() * 0.5;
+        return { b, score };
       });
-    }
 
-    return mockRecommends.filter((b) => !existingIds.has(b.id)).slice(0, 4);
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 4).map((x) => x.b);
   },
 
   getMonthlyReport: (month) => {
@@ -610,139 +702,220 @@ const useAppStore = create<AppState>((set, get) => ({
 
   exportMonthlyReportPDF: async (month) => {
     const report = get().getMonthlyReport(month);
-    const { books } = get();
+    const { books, readingRecords } = get();
     const finishedInMonth = books.filter(
       (b) => b.status === 'finished' && b.lastReadTime && new Date(b.lastReadTime).toISOString().startsWith(report.month)
     );
+
+    const startOfMonth = new Date(report.month + '-01T00:00:00').getTime();
+    const endOfMonth = new Date(report.month + '-01T00:00:00');
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+    const endTime = endOfMonth.getTime();
+    const daysInMonth = new Date(endOfMonth.getFullYear(), endOfMonth.getMonth(), 0).getDate();
+
+    const dailyData: { day: number; minutes: number }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key = `${report.month}-${String(d).padStart(2, '0')}`;
+      const r = readingRecords.find((x) => x.date === key);
+      dailyData.push({ day: d, minutes: r ? r.minutes : 0 });
+    }
+    const maxMinutes = Math.max(30, ...dailyData.map((d) => d.minutes));
 
     const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>悦读月度报告 - ${report.month}</title>
+  <title>悦读月度报告_${report.month}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f6f8fc; padding: 40px; }
-    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-    .header { background: linear-gradient(135deg, #4A7BFD 0%, #7BA1FF 100%); padding: 60px 40px; color: white; text-align: center; }
-    .header h1 { font-size: 36px; margin-bottom: 10px; }
-    .header p { font-size: 18px; opacity: 0.9; }
-    .section { padding: 40px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-    .stat-card { background: #f6f8fc; border-radius: 16px; padding: 30px; text-align: center; }
-    .stat-value { font-size: 40px; font-weight: bold; color: #4A7BFD; margin-bottom: 8px; }
-    .stat-label { font-size: 16px; color: #4e5969; }
-    .highlight { background: #FFF3E6; border-radius: 16px; padding: 30px; margin-top: 20px; }
-    .highlight h3 { color: #FF9A3C; margin-bottom: 12px; font-size: 20px; }
-    .highlight p { color: #4e5969; line-height: 1.8; font-size: 16px; }
-    .chart-placeholder { margin-top: 30px; }
-    .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 160px; padding: 0 10px; }
-    .bar { flex: 1; background: linear-gradient(180deg, #4A7BFD 0%, #7BA1FF 100%); border-radius: 8px 8px 0 0; min-height: 8px; transition: all 0.3s; }
-    .bar-labels { display: flex; gap: 8px; margin-top: 10px; padding: 0 10px; }
-    .bar-label { flex: 1; text-align: center; font-size: 12px; color: #86909C; }
-    .books-list { margin-top: 30px; }
-    .books-list h3 { font-size: 20px; color: #1D2129; margin-bottom: 16px; }
-    .book-item { display: flex; gap: 16px; padding: 16px; background: #f6f8fc; border-radius: 12px; margin-bottom: 12px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #fff; color: #1D2129; }
+    @page { size: A4; margin: 10mm; }
+    .page { max-width: 1000px; margin: 0 auto; padding: 40px; }
+    .header { background: linear-gradient(135deg, #4A7BFD 0%, #7BA1FF 100%); color: white; padding: 50px 40px; border-radius: 20px; text-align: center; }
+    .header h1 { font-size: 38px; margin-bottom: 10px; letter-spacing: 2px; }
+    .header p { font-size: 18px; opacity: 0.92; }
+    .section { margin-top: 36px; }
+    .section-title { font-size: 22px; font-weight: 600; color: #1D2129; margin-bottom: 18px; padding-left: 12px; border-left: 4px solid #4A7BFD; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat-card { background: #F7F8FA; border-radius: 14px; padding: 24px 16px; text-align: center; }
+    .stat-value { font-size: 32px; font-weight: 700; color: #4A7BFD; line-height: 1.2; }
+    .stat-unit { font-size: 14px; color: #4A7BFD; margin-left: 4px; font-weight: 500; }
+    .stat-label { font-size: 14px; color: #4E5969; margin-top: 6px; }
+    .highlight { background: #FFF6EC; border-radius: 14px; padding: 24px 28px; margin-top: 10px; border: 1px solid #FFE4C7; }
+    .highlight h3 { color: #FF9A3C; margin-bottom: 8px; font-size: 18px; }
+    .highlight p { color: #4E5969; line-height: 1.9; font-size: 15px; }
+    .highlight strong { color: #1D2129; }
+    .chart-wrap { margin-top: 10px; }
+    .chart-bars { display: flex; align-items: flex-end; gap: 4px; height: 180px; padding: 0 6px; border-bottom: 1px solid #E5E6EB; }
+    .bar { flex: 1; background: linear-gradient(180deg, #4A7BFD 0%, #7BA1FF 100%); border-radius: 4px 4px 0 0; min-height: 4px; transition: all 0.3s; }
+    .bar.zero { background: #F2F3F5; }
+    .bar-labels { display: flex; gap: 4px; margin-top: 8px; padding: 0 6px; }
+    .bar-label { flex: 1; text-align: center; font-size: 10px; color: #86909C; }
+    .books-list { margin-top: 10px; }
+    .book-item { display: flex; gap: 16px; padding: 16px; background: #F7F8FA; border-radius: 12px; margin-bottom: 10px; align-items: center; }
+    .book-cover { width: 50px; height: 70px; border-radius: 6px; background: linear-gradient(135deg, #A0B8FF, #4A7BFD); flex-shrink: 0; }
+    .book-info { flex: 1; }
     .book-info h4 { font-size: 16px; color: #1D2129; margin-bottom: 4px; }
-    .book-info p { font-size: 14px; color: #86909C; }
-    .footer { padding: 30px 40px; text-align: center; color: #86909C; font-size: 14px; border-top: 1px solid #f2f3f5; }
+    .book-info p { font-size: 13px; color: #86909C; }
+    .categories { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .category-tag { padding: 8px 16px; background: #E8F0FF; color: #4A7BFD; border-radius: 20px; font-size: 14px; font-weight: 500; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #F2F3F5; text-align: center; color: #86909C; font-size: 13px; }
+    .print-tip { background: #E8F0FF; color: #4A7BFD; padding: 14px 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; font-size: 14px; }
+    .print-tip strong { font-size: 16px; }
+    @media print {
+      .print-tip { display: none; }
+      .page { padding: 0; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="page">
+    <div class="print-tip">
+      <strong>📄 请使用浏览器打印功能保存为 PDF</strong><br/>
+      快捷键：Ctrl + P（Windows）或 Cmd + P（Mac），目标选择「另存为 PDF」
+    </div>
     <div class="header">
       <h1>📚 悦读月度报告</h1>
-      <p>${report.month.replace('-', '年')}月 · 你的阅读足迹</p>
+      <p>${report.month.replace('-', ' 年 ')} 月 · 你的阅读足迹</p>
     </div>
+
     <div class="section">
+      <div class="section-title">核心数据</div>
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-value">${Math.floor(report.totalReadingTime / 60)}小时${report.totalReadingTime % 60}分</div>
+          <div class="stat-value">${Math.floor(report.totalReadingTime / 60)}<span class="stat-unit">小时${report.totalReadingTime % 60}分</span></div>
           <div class="stat-label">累计阅读时长</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${report.bookCount}</div>
+          <div class="stat-value">${report.bookCount}<span class="stat-unit">本</span></div>
           <div class="stat-label">阅读书籍数</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${report.finishedBooks}</div>
+          <div class="stat-value">${report.finishedBooks}<span class="stat-unit">本</span></div>
           <div class="stat-label">完本数量</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">${report.noteCount}</div>
+          <div class="stat-value">${report.noteCount}<span class="stat-unit">条</span></div>
           <div class="stat-label">笔记条数</div>
         </div>
       </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">本月亮点</div>
       <div class="highlight">
-        <h3>✨ 本月亮点</h3>
+        <h3>✨ 本月总结</h3>
         <p>
-          这个月你一共阅读了 <strong>${Math.floor(report.totalReadingTime / 60)}小时${report.totalReadingTime % 60}分钟</strong>，
-          完成率达 <strong>${report.completionRate}%</strong>，日均阅读 <strong>${report.dailyAverage}分钟</strong>。
+          这个月你一共阅读了 <strong>${Math.floor(report.totalReadingTime / 60)} 小时 ${report.totalReadingTime % 60} 分钟</strong>，
+          活跃 <strong>${report.completionRate}%</strong> 的天数，日均阅读 <strong>${report.dailyAverage} 分钟</strong>。
           ${report.finishedBooks > 0 ? `你完成了 <strong>${report.finishedBooks}</strong> 本书，太厉害了！` : '继续加油，争取下个月读完更多书～'}
+          ${report.noteCount > 0 ? `累计记录了 <strong>${report.noteCount}</strong> 条读书笔记。` : ''}
         </p>
       </div>
-      <div class="chart-placeholder">
-        <h3 style="font-size: 20px; color: #1D2129; margin-bottom: 20px;">📊 每日阅读时长（分钟）</h3>
+    </div>
+
+    ${report.categories.length > 0 ? `
+    <div class="section">
+      <div class="section-title">阅读偏好</div>
+      <div class="categories">
+        ${report.categories.map((c) => `<span class="category-tag">${c.category} · ${c.count}本</span>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="section">
+      <div class="section-title">每日阅读时长（分钟）</div>
+      <div class="chart-wrap">
         <div class="chart-bars">
-          ${Array.from({ length: 14 }, (_, i) => {
-            const h = 10 + Math.random() * 100;
-            return `<div class="bar" style="height: ${h}px"></div>`;
-          }).join('')}
+          ${dailyData
+            .map(
+              (d) =>
+                `<div class="bar ${d.minutes === 0 ? 'zero' : ''}" style="height: ${Math.max(
+                  4,
+                  (d.minutes / maxMinutes) * 160
+                )}px" title="${d.day}日：${d.minutes}分钟"></div>`
+            )
+            .join('')}
         </div>
         <div class="bar-labels">
-          ${Array.from({ length: 14 }, (_, i) => `<div class="bar-label">${i + 1}日</div>`).join('')}
+          ${dailyData
+            .map((d) => `<div class="bar-label">${d.day % 5 === 1 || d.day === daysInMonth ? d.day : ''}</div>`)
+            .join('')}
         </div>
       </div>
-      ${finishedInMonth.length > 0 ? `
+    </div>
+
+    ${finishedInMonth.length > 0 ? `
+    <div class="section">
+      <div class="section-title">本月读完</div>
       <div class="books-list">
-        <h3>📖 本月读完</h3>
         ${finishedInMonth
           .map(
             (b) => `
-        <div class="book-item">
-          <div class="book-info">
-            <h4>${b.title}</h4>
-            <p>${b.author} · ${calculateReadingProgress(b.currentPage, b.totalPages)}% 完成</p>
-          </div>
-        </div>`
+          <div class="book-item">
+            <div class="book-cover"></div>
+            <div class="book-info">
+              <h4>${b.title}</h4>
+              <p>${b.author} · 共 ${b.totalPages} 页 · 阅读 ${formatTimeStore(b.totalReadingTime)}</p>
+            </div>
+          </div>`
           )
           .join('')}
-      </div>` : ''}
-    </div>
+      </div>
+    </div>` : ''}
+
     <div class="footer">
       由 悦读 APP 自动生成 · 生成时间 ${new Date().toLocaleString('zh-CN')}
     </div>
   </div>
+  <script>
+    window.onload = function() {
+      document.title = '悦读月度报告_${report.month}';
+      setTimeout(function() {
+        if (window.confirm('是否立即打印/保存为 PDF？\\n\\n选择「另存为 PDF」即可保存文件')) {
+          window.print();
+        }
+      }, 500);
+    };
+  </script>
 </body>
 </html>`;
 
-    const fileName = `阅读报告_${report.month}.html`;
-    const filePath = `${Taro.env.USER_DATA_PATH || ''}/${fileName}`;
+    const fileName = `阅读报告_${report.month}.pdf`;
 
     try {
-      const fs = Taro.getFileSystemManager();
-      fs.writeFileSync(filePath, htmlContent, 'utf8');
-      Taro.showToast({ title: '报告已生成', icon: 'success' });
-
-      if (process.env.TARO_ENV === 'h5') {
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
+      if (process.env.TARO_ENV === 'h5' && typeof window !== 'undefined') {
+        const win = window.open('', '_blank');
+        if (win) {
+          win.document.open();
+          win.document.write(htmlContent);
+          win.document.close();
+          Taro.showToast({ title: '报告已生成，请在新窗口保存为 PDF', icon: 'none', duration: 2500 });
+        } else {
+          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.click();
+          URL.revokeObjectURL(url);
+          Taro.showToast({ title: '报告已在新窗口打开', icon: 'none', duration: 2500 });
+        }
+      } else {
+        const fs = Taro.getFileSystemManager();
+        const filePath = `${Taro.env.USER_DATA_PATH || ''}/${fileName.replace('.pdf', '.html')}`;
+        fs.writeFileSync(filePath, htmlContent, 'utf8');
+        Taro.showToast({ title: '报告已生成', icon: 'success' });
       }
-
-      return filePath;
+      return fileName;
     } catch (e) {
       console.warn('导出失败', e);
-      if (process.env.TARO_ENV === 'h5') {
+      if (process.env.TARO_ENV === 'h5' && typeof window !== 'undefined') {
         const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName;
+        a.target = '_blank';
         a.click();
         URL.revokeObjectURL(url);
       }

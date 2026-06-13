@@ -163,11 +163,35 @@ const BookDetailPage: React.FC = () => {
             <View className={styles.notesList}>
               {notes.map((note) => (
                 <View key={note.id} className={styles.noteItem}>
-                  <Text className={styles.noteContent}>{note.content}</Text>
+                  {note.type === 'image' && note.imageUrl ? (
+                    <>
+                      <Image
+                        className={styles.noteImage}
+                        src={note.imageUrl}
+                        mode="widthFix"
+                        onClick={() => {
+                          Taro.previewImage({
+                            urls: [note.imageUrl as string],
+                            current: note.imageUrl as string,
+                          });
+                        }}
+                      />
+                      {note.content && note.content !== '拍照笔记' ? (
+                        <Text className={styles.noteContent}>{note.content}</Text>
+                      ) : null}
+                    </>
+                  ) : (
+                    <Text className={styles.noteContent}>{note.content}</Text>
+                  )}
                   <View className={styles.noteMeta}>
-                    {note.pageNumber && (
-                      <Text className={styles.notePage}>第 {note.pageNumber} 页</Text>
-                    )}
+                    <View style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <Text className={styles.noteTypeTag}>
+                        {note.type === 'image' ? '📷 拍照笔记' : '✏️ 文字笔记'}
+                      </Text>
+                      {note.pageNumber ? (
+                        <Text className={styles.notePage}>第 {note.pageNumber} 页</Text>
+                      ) : null}
+                    </View>
                     <Text className={styles.noteTime}>
                       {formatRelativeTime(note.createTime)}
                     </Text>
